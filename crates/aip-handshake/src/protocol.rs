@@ -4,7 +4,7 @@ use crate::error::{HandshakeError, Result};
 use crate::messages::{Challenge, CounterChallenge, CounterProof, Hello, Proof, ProofAccepted};
 use aip_core::{signing, Did, RootKey};
 use chrono::Utc;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 /// Default timestamp tolerance (±5 minutes).
@@ -14,35 +14,58 @@ pub const DEFAULT_TIMESTAMP_TOLERANCE_MS: i64 = 5 * 60 * 1000;
 pub const DEFAULT_SESSION_DURATION_MS: i64 = 24 * 60 * 60 * 1000;
 
 /// Nonce cache for replay protection.
+///
+/// Stores nonces with timestamps and automatically expires old entries.
 pub struct NonceCache {
-    seen: Mutex<HashSet<String>>,
-    #[allow(dead_code)]
+    /// Map of nonce -> timestamp (ms since epoch)
+    seen: Mutex<HashMap<String, i64>>,
+    /// How long to keep nonces (ms)
     max_age_ms: i64,
 }
 
 impl NonceCache {
     pub fn new(max_age_ms: i64) -> Self {
         Self {
-            seen: Mutex::new(HashSet::new()),
+            seen: Mutex::new(HashMap::new()),
             max_age_ms,
         }
     }
 
     /// Check if nonce is fresh (not seen before).
     /// Returns true if fresh, false if replay.
+    /// Automatically cleans up expired entries.
     pub fn check_and_insert(&self, nonce: &str) -> bool {
         let mut seen = self.seen.lock().unwrap();
-        if seen.contains(nonce) {
+        let now = Utc::now().timestamp_millis();
+
+        // Clean up expired entries
+        let cutoff = now - self.max_age_ms;
+        seen.retain(|_, &mut ts| ts > cutoff);
+
+        // Check if nonce exists
+        if seen.contains_key(nonce) {
             return false;
         }
-        seen.insert(nonce.to_string());
+
+        // Insert with current timestamp
+        seen.insert(nonce.to_string(), now);
         true
     }
 
-    /// Clear old nonces (call periodically).
+    /// Clear all nonces.
     pub fn clear(&self) {
         let mut seen = self.seen.lock().unwrap();
         seen.clear();
+    }
+
+    /// Get current cache size (for monitoring).
+    pub fn len(&self) -> usize {
+        self.seen.lock().unwrap().len()
+    }
+
+    /// Check if cache is empty.
+    pub fn is_empty(&self) -> bool {
+        self.seen.lock().unwrap().is_empty()
     }
 }
 
@@ -334,6 +357,7 @@ mod tests {
 
         assert!(cache.check_and_insert("nonce1"));
         assert!(cache.check_and_insert("nonce2"));
+        assert_eq!(cache.len(), 2);
 
         // Replay should fail
         assert!(!cache.check_and_insert("nonce1"));
@@ -341,5 +365,20 @@ mod tests {
 
         // New nonce should work
         assert!(cache.check_and_insert("nonce3"));
+        assert_eq!(cache.len(), 3);
+    }
+
+    #[test]
+    fn test_nonce_cache_expiry() {
+        // Create cache with very short expiry for testing
+        let cache = NonceCache::new(1); // 1ms expiry
+
+        assert!(cache.check_and_insert("nonce1"));
+
+        // Wait for expiry
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        // Should be able to reuse nonce after expiry
+        assert!(cache.check_and_insert("nonce1"));
     }
 }
