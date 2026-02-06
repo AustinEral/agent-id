@@ -5,9 +5,15 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "aip-log"
+path = "src/main.rs"
+
 [dependencies]
 aip-core = { path = "../../crates/aip-core" }
 aip-log = { path = "../../crates/aip-log" }
+axum = "0.8"
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+clap = { version = "4", features = ["derive"] }
