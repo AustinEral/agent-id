@@ -20,10 +20,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Create identities for two agents
     // =========================================
     println!("1. Creating identities...");
-    
+
     let alice_key = RootKey::generate();
     let bob_key = RootKey::generate();
-    
+
     println!("   Alice's DID: {}", alice_key.did());
     println!("   Bob's DID:   {}", bob_key.did());
     println!();
@@ -32,18 +32,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 2: Create DID Documents
     // =========================================
     println!("2. Creating DID Documents...");
-    
+
     let alice_doc = DidDocument::new(&alice_key)
         .with_handshake_endpoint("https://alice.example/aip/handshake")
         .sign(&alice_key)?;
-    
+
     let bob_doc = DidDocument::new(&bob_key)
         .with_handshake_endpoint("https://bob.example/aip/handshake")
         .sign(&bob_key)?;
-    
+
     println!("   Alice's document signed: ✓");
     println!("   Bob's document signed:   ✓");
-    
+
     // Verify documents
     alice_doc.verify()?;
     bob_doc.verify()?;
@@ -54,20 +54,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 3: Perform a handshake
     // =========================================
     println!("3. Performing handshake (Alice verifies Bob)...");
-    
+
     // Bob sends Hello to Alice
     let bob_hello = Hello::new(bob_key.did().to_string());
     println!("   Bob sends Hello:         ✓");
-    
+
     // Alice creates a challenge for Bob
     let alice_verifier = Verifier::new(alice_key.did());
     let challenge = alice_verifier.handle_hello(&bob_hello)?;
     println!("   Alice creates Challenge: ✓");
-    
+
     // Bob signs the challenge (proving he owns the DID)
     let proof = sign_proof(&challenge, &bob_key.did(), &bob_key, None)?;
     println!("   Bob signs Proof:         ✓");
-    
+
     // Alice verifies Bob's proof
     alice_verifier.verify_proof(&proof, &challenge)?;
     println!("   Alice verifies Bob:      ✓");
@@ -77,31 +77,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 4: Issue trust statements
     // =========================================
     println!("4. Issuing trust statements...");
-    
+
     // Alice trusts Bob (score 0.85)
-    let alice_trusts_bob = TrustStatement::new(
-        alice_key.did(),
-        bob_key.did(),
-        0.85,
-    )
-    .with_tags(vec!["verified".into(), "helpful".into()])
-    .sign(&alice_key)?;
-    
+    let alice_trusts_bob = TrustStatement::new(alice_key.did(), bob_key.did(), 0.85)
+        .with_tags(vec!["verified".into(), "helpful".into()])
+        .sign(&alice_key)?;
+
     println!("   Alice → Bob (trust: 0.85): ✓");
-    
+
     // Verify the statement
     alice_trusts_bob.verify()?;
     println!("   Statement verified:        ✓");
-    
+
     // Bob trusts Alice back (score 0.9)
-    let bob_trusts_alice = TrustStatement::new(
-        bob_key.did(),
-        alice_key.did(),
-        0.9,
-    )
-    .with_tags(vec!["verified".into(), "reliable".into()])
-    .sign(&bob_key)?;
-    
+    let bob_trusts_alice = TrustStatement::new(bob_key.did(), alice_key.did(), 0.9)
+        .with_tags(vec!["verified".into(), "reliable".into()])
+        .sign(&bob_key)?;
+
     println!("   Bob → Alice (trust: 0.9):  ✓");
     bob_trusts_alice.verify()?;
     println!("   Statement verified:        ✓");
