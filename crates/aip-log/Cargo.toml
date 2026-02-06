@@ -1,0 +1,13 @@
+[package]
+name = "aip-log"
+description = "Transparency log client for the Agent Identity Protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aip-core = { path = "../aip-core" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
