@@ -1,0 +1,45 @@
+name: Claude
+
+on:
+  # Comment events - respond to @claude mentions
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to review"
+        required: false
+
+jobs:
+  claude:
+    # Only run if @claude is mentioned in a comment
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.comment.body, '@claude')
+    
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          
+          claude_args: |
+            --system-prompt "Read spec/PROTOCOL.md before responding. Be direct and critical. Skip praise, emojis, and filler. If something is wrong, say so clearly. For PRs: check scope and protocol compliance, note any issues. For questions: answer concisely."
