@@ -48,6 +48,10 @@ println!("{}", key.did());
 - [INTEGRATION.md](docs/INTEGRATION.md) — Add to your agent
 - [PROTOCOL.md](spec/PROTOCOL.md) — Full specification
 
+## Philosophy
+
+Design for the end goal, implement for today.
+
 ## License
 
 MIT
