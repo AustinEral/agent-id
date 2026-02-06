@@ -2,7 +2,8 @@
 
 use crate::error::{HandshakeError, Result};
 use crate::messages::{Challenge, CounterChallenge, CounterProof, Hello, Proof, ProofAccepted};
-use aip_core::{signing, Did, RootKey};
+use aip_core::delegation::Capability;
+use aip_core::{signing, Did, RootKey, SessionKey};
 use chrono::Utc;
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -83,6 +84,9 @@ impl Verifier {
     }
 
     /// Verify a Proof message.
+    ///
+    /// Supports both root key signatures and delegated session key signatures.
+    /// If a delegation is provided, it is validated before accepting the signature.
     pub fn verify_proof(&self, proof: &Proof, original_challenge: &Challenge) -> Result<()> {
         // Verify this proof is for our challenge
         let expected_hash = hash_challenge(original_challenge)?;
@@ -108,12 +112,29 @@ impl Verifier {
             }
         }
 
-        // Parse responder DID and verify signature
+        // Parse responder DID
         let responder_did: Did = proof.responder_did.parse()?;
 
-        // For now, we expect the signing key to be the root key
-        // TODO: Support delegated session keys
-        let public_key = responder_did.public_key()?;
+        // Determine which public key to verify against
+        let public_key = if let Some(ref delegation) = proof.delegation {
+            // Validate the delegation
+            self.verify_delegation(delegation, &responder_did)?;
+
+            // Use the delegated session key
+            let delegate_bytes = bs58::decode(&delegation.delegate_pubkey)
+                .into_vec()
+                .map_err(|_| HandshakeError::InvalidDelegation)?;
+
+            let delegate_bytes: [u8; 32] = delegate_bytes
+                .try_into()
+                .map_err(|_| HandshakeError::InvalidDelegation)?;
+
+            ed25519_dalek::VerifyingKey::from_bytes(&delegate_bytes)
+                .map_err(|_| HandshakeError::InvalidDelegation)?
+        } else {
+            // No delegation - use the root key from the DID
+            responder_did.public_key()?
+        };
 
         // Verify signature over the challenge hash
         let sig_bytes =
@@ -127,6 +148,35 @@ impl Verifier {
         );
 
         aip_core::keys::verify(&public_key, proof.challenge_hash.as_bytes(), &signature)?;
+
+        Ok(())
+    }
+
+    /// Verify a delegation is valid for handshake operations.
+    fn verify_delegation(
+        &self,
+        delegation: &aip_core::delegation::Delegation,
+        expected_root: &Did,
+    ) -> Result<()> {
+        // Verify the delegation signature (signed by root key)
+        delegation
+            .verify()
+            .map_err(|_| HandshakeError::InvalidDelegation)?;
+
+        // Verify the delegation is for the claimed root DID
+        if delegation.root_did != expected_root.to_string() {
+            return Err(HandshakeError::InvalidDelegation);
+        }
+
+        // Verify the delegation is currently valid (not expired, not before issued)
+        delegation
+            .is_valid_at(Utc::now())
+            .map_err(|_| HandshakeError::InvalidDelegation)?;
+
+        // Verify the delegation grants handshake capability
+        if !delegation.has_capability(&Capability::Handshake) {
+            return Err(HandshakeError::InvalidDelegation);
+        }
 
         Ok(())
     }
@@ -173,28 +223,68 @@ pub fn hash_counter_challenge(counter: &CounterChallenge) -> Result<String> {
     Ok(format!("sha256:{}", hex::encode(hash)))
 }
 
-/// Sign a challenge to create a Proof.
+/// Sign a challenge to create a Proof using the root key.
 pub fn sign_proof(
     challenge: &Challenge,
     my_did: &Did,
     my_key: &RootKey,
     counter_audience: Option<String>,
 ) -> Result<Proof> {
+    sign_proof_internal(
+        challenge,
+        my_did,
+        |msg| my_key.sign(msg),
+        format!("{}#root", my_did),
+        None,
+        counter_audience,
+    )
+}
+
+/// Sign a challenge using a delegated session key.
+pub fn sign_proof_with_session_key(
+    challenge: &Challenge,
+    root_did: &Did,
+    session_key: &SessionKey,
+    delegation: aip_core::delegation::Delegation,
+    counter_audience: Option<String>,
+) -> Result<Proof> {
+    sign_proof_internal(
+        challenge,
+        root_did,
+        |msg| session_key.sign(msg),
+        format!("{}#session", root_did),
+        Some(delegation),
+        counter_audience,
+    )
+}
+
+fn sign_proof_internal<F>(
+    challenge: &Challenge,
+    my_did: &Did,
+    sign_fn: F,
+    signing_key: String,
+    delegation: Option<aip_core::delegation::Delegation>,
+    counter_audience: Option<String>,
+) -> Result<Proof>
+where
+    F: FnOnce(&[u8]) -> ed25519_dalek::Signature,
+{
     let challenge_hash = hash_challenge(challenge)?;
 
     // Sign the challenge hash
-    let signature = my_key.sign(challenge_hash.as_bytes());
+    let signature = sign_fn(challenge_hash.as_bytes());
     let sig_b64 = base64::Engine::encode(
         &base64::engine::general_purpose::STANDARD,
         signature.to_bytes(),
     );
 
-    let mut proof = Proof::new(
-        challenge_hash,
-        my_did.to_string(),
-        format!("{}#root", my_did),
-    );
+    let mut proof = Proof::new(challenge_hash, my_did.to_string(), signing_key);
     proof.signature = sig_b64;
+
+    // Attach delegation if using session key
+    if let Some(del) = delegation {
+        proof = proof.with_delegation(del);
+    }
 
     // Add counter-challenge if this is mutual auth
     if let Some(audience) = counter_audience {
@@ -263,6 +353,8 @@ pub fn verify_counter_proof(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aip_core::delegation::{Delegation, DelegationType};
+    use chrono::Duration;
 
     #[test]
     fn test_full_handshake() {
@@ -305,6 +397,134 @@ mod tests {
         .unwrap();
 
         // Handshake complete!
+    }
+
+    #[test]
+    fn test_handshake_with_session_key() {
+        // Agent A uses a session key, Agent B uses root key
+        let key_a = RootKey::generate();
+        let key_b = RootKey::generate();
+        let did_a = key_a.did();
+        let did_b = key_b.did();
+
+        // A creates a session key and delegation
+        let session_a = SessionKey::generate(did_a.clone());
+        let delegation = Delegation::new(
+            did_a.clone(),
+            session_a.public_key_base58(),
+            DelegationType::Session,
+            vec![Capability::Sign, Capability::Handshake],
+            Utc::now() + Duration::hours(24),
+        )
+        .sign(&key_a)
+        .unwrap();
+
+        // A sends Hello to B
+        let hello = Hello::new(did_a.to_string());
+
+        // B receives Hello, sends Challenge
+        let verifier_b = Verifier::new(did_b.clone());
+        let challenge = verifier_b.handle_hello(&hello).unwrap();
+
+        // A signs proof with session key + delegation
+        let proof = sign_proof_with_session_key(
+            &challenge,
+            &did_a,
+            &session_a,
+            delegation,
+            Some(did_b.to_string()),
+        )
+        .unwrap();
+
+        assert!(proof.delegation.is_some());
+        assert!(!proof.signature.is_empty());
+
+        // B verifies proof (should accept delegated session key)
+        verifier_b.verify_proof(&proof, &challenge).unwrap();
+
+        // B sends ProofAccepted
+        let accepted = verifier_b.accept_proof(&proof, &key_b).unwrap();
+
+        // A verifies counter-proof
+        verify_counter_proof(
+            &accepted.counter_proof,
+            proof.counter_challenge.as_ref().unwrap(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_expired_delegation_rejected() {
+        let key_a = RootKey::generate();
+        let key_b = RootKey::generate();
+        let did_a = key_a.did();
+        let did_b = key_b.did();
+
+        // Create an already-expired delegation
+        let session_a = SessionKey::generate(did_a.clone());
+        let delegation = Delegation::new(
+            did_a.clone(),
+            session_a.public_key_base58(),
+            DelegationType::Session,
+            vec![Capability::Sign, Capability::Handshake],
+            Utc::now() - Duration::hours(1), // Already expired
+        )
+        .sign(&key_a)
+        .unwrap();
+
+        let hello = Hello::new(did_a.to_string());
+        let verifier_b = Verifier::new(did_b.clone());
+        let challenge = verifier_b.handle_hello(&hello).unwrap();
+
+        let proof = sign_proof_with_session_key(
+            &challenge,
+            &did_a,
+            &session_a,
+            delegation,
+            Some(did_b.to_string()),
+        )
+        .unwrap();
+
+        // Verification should fail due to expired delegation
+        let result = verifier_b.verify_proof(&proof, &challenge);
+        assert!(matches!(result, Err(HandshakeError::InvalidDelegation)));
+    }
+
+    #[test]
+    fn test_missing_handshake_capability_rejected() {
+        let key_a = RootKey::generate();
+        let key_b = RootKey::generate();
+        let did_a = key_a.did();
+        let did_b = key_b.did();
+
+        // Create delegation WITHOUT Handshake capability
+        let session_a = SessionKey::generate(did_a.clone());
+        let delegation = Delegation::new(
+            did_a.clone(),
+            session_a.public_key_base58(),
+            DelegationType::Session,
+            vec![Capability::Sign], // No Handshake!
+            Utc::now() + Duration::hours(24),
+        )
+        .sign(&key_a)
+        .unwrap();
+
+        let hello = Hello::new(did_a.to_string());
+        let verifier_b = Verifier::new(did_b.clone());
+        let challenge = verifier_b.handle_hello(&hello).unwrap();
+
+        let proof = sign_proof_with_session_key(
+            &challenge,
+            &did_a,
+            &session_a,
+            delegation,
+            Some(did_b.to_string()),
+        )
+        .unwrap();
+
+        // Verification should fail due to missing capability
+        let result = verifier_b.verify_proof(&proof, &challenge);
+        assert!(matches!(result, Err(HandshakeError::InvalidDelegation)));
     }
 
     #[test]

@@ -13,7 +13,7 @@ Verified issues and improvements.
 ```rust
 pub struct NonceCache {
     seen: Mutex<HashSet<String>>,
-    #[allow(dead_code)]  // <-- Compiler confirms it's unused
+    #[allow(dead_code)]  // <-- Compiler confirms it is unused
     max_age_ms: i64,
 }
 ```
@@ -26,22 +26,26 @@ The `max_age_ms` field is stored but never read. Nonces accumulate forever.
 
 ---
 
-### 2. Session Key Delegation Not Implemented
-**Location:** `crates/aip-handshake/src/protocol.rs:115`  
-**Status:** CONFIRMED
+### 2. Session Key Delegation ✓ IMPLEMENTED
+**Location:** `crates/aip-handshake/src/protocol.rs`  
+**Status:** FIXED
 
-```rust
-// TODO: Support delegated session keys
-```
+The handshake protocol now supports delegated session key signatures:
 
-Handshake verification only accepts root key signatures. The `Delegation` type exists in aip-core but isn't used in verification.
+- `verify_proof()` checks for a `delegation` field in the Proof
+- If present, validates the delegation (signature, expiry, capabilities)
+- Verifies proof signature against the delegated session key
+- New `sign_proof_with_session_key()` function for session key signing
 
-**Impact:** Agents must expose root key for every handshake instead of using short-lived session keys.
+**Tests added:**
+- `test_handshake_with_session_key` - full delegated handshake flow
+- `test_expired_delegation_rejected` - expired delegations fail
+- `test_missing_handshake_capability_rejected` - capability enforcement
 
-**Fix needed:** 
-- Accept session key signatures in `verify_proof()`
-- Verify delegation chain to root
-- Check delegation expiry and capabilities
+**Benefits:**
+- Agents can use short-lived session keys for routine operations
+- Root key exposure is minimized
+- Compromised session keys dont compromise identity
 
 ---
 
@@ -72,6 +76,16 @@ Log correctly verifies:
 - Entry hash integrity (line 343)
 - Inclusion proofs (line 254)
 
+### Session Key Delegation ✓
+**Location:** `crates/aip-handshake/src/protocol.rs`
+
+Handshake verifier properly validates:
+- Delegation signature (signed by root key)
+- Delegation root_did matches proof responder_did
+- Delegation time bounds (issued_at, expires_at)
+- Delegation capabilities (requires Handshake)
+- Proof signature (against delegated session key)
+
 ---
 
 ## Improvements to Consider
@@ -83,7 +97,7 @@ Log correctly verifies:
 let mut seen = self.seen.lock().unwrap();
 ```
 
-If a thread panics while holding the lock, subsequent calls will panic. This is Rust's default behavior and usually acceptable (fail-fast), but consider using `lock().unwrap_or_else(|e| e.into_inner())` if graceful recovery is preferred.
+If a thread panics while holding the lock, subsequent calls will panic. This is Rust default behavior and usually acceptable (fail-fast), but consider using `lock().unwrap_or_else(|e| e.into_inner())` if graceful recovery is preferred.
 
 ### 4. Test Vectors
 **Status:** Not yet created
@@ -103,7 +117,7 @@ Priority targets based on complexity:
 
 ---
 
-## What's Actually Solid
+## What is Actually Solid
 
 After review, the core security properties are sound:
 
@@ -115,12 +129,13 @@ After review, the core security properties are sound:
 | DID Document signing | ✓ | Verified on store |
 | Log entry signing | ✓ | Subject + operator signatures |
 | Input validation | ✓ | Error returns, not panics |
+| Session key delegation | ✓ | Delegation verified in handshake |
 
 ---
 
 ## Priority
 
 1. **Fix nonce cache expiry** - Real bug, will cause OOM
-2. **Implement session key verification** - Security best practice not yet usable
+2. ~~Implement session key verification~~ ✓ Done
 3. **Add test vectors** - Needed for any other implementations
 4. **Add fuzz testing** - Defense in depth
