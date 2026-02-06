@@ -1,360 +1,367 @@
-# AIP Security & Hardening Roadmap
+# AIP Security & Protocol Hardening
 
 > **Status:** Draft v1.0  
-> **Last Updated:** February 2026  
-> **Classification:** Critical Infrastructure
+> **Last Updated:** February 2026
 
 ---
 
-## Executive Summary
+## What AIP Is
 
-AIP is foundational identity infrastructure. Agents don't just need to trust each other—they must trust the system itself as the ultimate source of truth. This document outlines the path from prototype to production-grade infrastructure.
+AIP is a **protocol specification** and **reference implementation** for decentralized agent identity. It is not a service.
 
-**Current State:** Functional prototype, not production-ready  
-**Target State:** Trustworthy infrastructure for millions of agents
-
----
-
-## 1. Trust Model
-
-### 1.1 What Agents Must Trust
-
-| Component | Trust Requirement | Current State |
-|-----------|------------------|---------------|
-| **Cryptography** | Ed25519 signatures are unforgeable | ✅ Battle-tested |
-| **DID Derivation** | Public key → DID is deterministic | ✅ Mathematical |
-| **Resolver** | Returns authentic DID Documents | ❌ Single operator |
-| **Transparency Log** | Accurately records all events | ❌ Single operator |
-| **Relay** | Doesn't forge trust statements | ✅ Statements self-signed |
-| **Their own keys** | Private key hasn't been compromised | ⚠️ Implementation-dependent |
-
-### 1.2 Core Security Principle
+**Core principle:** Identity verification requires no network. The DID embeds the public key; verification is pure cryptography.
 
 ```
-The system is only as trustworthy as its weakest centralized component.
+┌─────────────────────────────────────────────────────────────────┐
+│  REQUIRED FOR IDENTITY VERIFICATION                             │
+│                                                                  │
+│  • The DID (contains public key)                                │
+│  • A signed challenge from the claimant                         │
+│  • Math (Ed25519 signature verification)                        │
+│                                                                  │
+│  Network: NOT REQUIRED                                          │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-Currently: Resolver and Log are single points of trust failure.
-
-Goal: **Trust-minimized architecture** where no single party can compromise the system.
-
----
-
-## 2. Threat Model
-
-### 2.1 Adversary Capabilities
-
-| Adversary | Capabilities | Likelihood |
-|-----------|--------------|------------|
-| **Script Kiddie** | Automated attacks, known exploits | High |
-| **Malicious Agent** | Impersonation attempts, spam | High |
-| **Compromised Operator** | Control of resolver/log/relay | Medium |
-| **Nation State** | Key theft, infrastructure compromise | Low |
-| **Quantum Computer** | Break Ed25519 (future) | Low (10+ years) |
-
-### 2.2 Attack Vectors & Mitigations
-
-#### Critical Priority
-
-| Attack | Impact | Current | Mitigation | Priority |
-|--------|--------|---------|------------|----------|
-| **Fake Resolver** | Attacker returns wrong DID Document, redirects handshakes | ❌ Unprotected | Multi-resolver consensus, client-side verification | **P0** |
-| **Log Equivocation** | Operator shows different history to different clients | ❌ Unprotected | Witnessed log, gossip protocol | **P0** |
-| **Key Theft** | Full identity compromise | ⚠️ User responsibility | HSM support, session key rotation | **P0** |
-
-#### High Priority
-
-| Attack | Impact | Current | Mitigation | Priority |
-|--------|--------|---------|------------|----------|
-| **DDoS on Services** | Availability loss | ❌ Unprotected | Rate limiting, CDN, redundancy | **P1** |
-| **Replay Attack** | Reuse old handshake proofs | ✅ Nonce + timestamp | Already mitigated | - |
-| **MITM on Handshake** | Intercept communications | ✅ Signatures | Already mitigated | - |
-| **Trust Statement Spam** | Pollute relay with garbage | ⚠️ Basic rate limit | PoW, staking, reputation gating | **P1** |
-
-#### Medium Priority
-
-| Attack | Impact | Current | Mitigation | Priority |
-|--------|--------|---------|------------|----------|
-| **Sybil Attack** | Flood network with fake identities | ❌ Unprotected | PoW for registration, social graph analysis | **P2** |
-| **Eclipse Attack** | Isolate agent from honest peers | ❌ Unprotected | Diverse peer selection, out-of-band verification | **P2** |
-| **Timing Attack** | Leak information via timing | ❌ Not analyzed | Constant-time operations | **P2** |
+**Optional infrastructure** (anyone can run):
+- **Resolver:** Caches DID Documents for endpoint discovery
+- **Transparency Log:** Audit trail for key lifecycle events
+- **Trust Relay:** Gossip network for trust statements
 
 ---
 
-## 3. Hardening Roadmap
+## Security Model
 
-### Phase 0: Foundation (Current)
-- [x] Core cryptography (Ed25519)
+### What's Cryptographically Guaranteed
+
+| Property | Guarantee | Depends On |
+|----------|-----------|------------|
+| DID uniqueness | One private key → one DID | Ed25519 properties |
+| Signature validity | Only key holder can sign | Private key secrecy |
+| Handshake authenticity | Proves DID ownership | Nonce freshness + signature |
+| Statement integrity | Tampering is detectable | Signature verification |
+
+These guarantees hold regardless of infrastructure. An attacker controlling every resolver and log still cannot forge signatures.
+
+### What Requires Trust
+
+| Component | Trust Assumption | Failure Impact |
+|-----------|-----------------|----------------|
+| **Your private key storage** | Not compromised | Full identity loss |
+| **Resolver (if used)** | Returns correct DID Documents | Wrong endpoint discovery |
+| **Log (if used)** | Accurately records events | Missed revocations |
+| **Clock** | Roughly synchronized | Replay attacks possible |
+
+### Design Principle: Fail Closed
+
+If trust assumptions fail, agents should reject verification rather than accept.
+
+```rust
+// CORRECT: Fail closed
+if !can_verify_log_entry() {
+    return Err("Cannot verify - rejecting");
+}
+
+// WRONG: Fail open
+if !can_verify_log_entry() {
+    warn("Skipping verification");
+    return Ok(()); // DANGEROUS
+}
+```
+
+---
+
+## Protocol-Specific Threats
+
+### 1. Private Key Compromise
+
+**Threat:** Attacker obtains agent's private key.
+
+**Impact:** Complete identity takeover. Attacker can:
+- Impersonate the agent
+- Issue trust statements
+- Rotate keys (locking out legitimate owner)
+
+**Mitigations (implementation responsibility):**
+- [ ] Document secure key storage practices
+- [ ] Provide session key support (limit root key exposure)
+- [ ] Implement key rotation guidance
+- [ ] Add recovery key documentation
+
+**Protocol features that help:**
+- Session keys: Root key rarely used, limits exposure window
+- Recovery keys: Can reclaim identity if root compromised (with waiting period)
+- Transparency log: Key rotations are visible, can detect unauthorized changes
+
+### 2. Stale Revocation Data
+
+**Threat:** Agent uses cached data, misses a key revocation.
+
+**Impact:** Accepts signatures from compromised/revoked keys.
+
+**Mitigations:**
+- [ ] Define cache TTL recommendations
+- [ ] Implement freshness checks in reference code
+- [ ] Document offline verification limitations
+
+**Protocol approach:**
+- Transparency log provides Merkle proofs
+- Agents can verify they have consistent view
+- Offline verification explicitly documented as "trust cached data"
+
+### 3. DID Document Substitution
+
+**Threat:** Malicious resolver returns wrong DID Document (e.g., wrong handshake endpoint).
+
+**Impact:** Agent connects to attacker's endpoint instead of real agent.
+
+**Why it's limited:**
+- DID Document must be signed by the DID's key
+- Attacker can't forge signature without private key
+- Worst case: Attacker can cause connection failure, not impersonation
+
+**Mitigations:**
+- [x] DID Documents are self-signed (implemented)
+- [ ] Document that clients MUST verify DID Document signatures
+- [ ] Add verification to reference client code
+
+### 4. Transparency Log Equivocation
+
+**Threat:** Log operator shows different history to different agents.
+
+**Impact:** Agents have inconsistent view of key state.
+
+**Current state:** Single operator model (acknowledged in spec).
+
+**Future mitigation (per spec):**
+- Witnessed log with multiple signers
+- Gossip protocol for consistency
+- Third-party auditors
+
+**For now:**
+- [ ] Document the trust assumption clearly
+- [ ] Implement client-side consistency checks
+- [ ] Add "compare with peer" functionality
+
+### 5. Sybil Attack
+
+**Threat:** Attacker creates many fake identities to manipulate trust network.
+
+**Impact:** Inflated trust scores, spam, reputation gaming.
+
+**Why core identity is unaffected:**
+- Each identity requires a unique keypair
+- Verification is per-identity, not aggregate
+- Creating identities is cheap but proving trust is hard
+
+**Application-layer mitigations (for trust/relay):**
+- [ ] Document Sybil resistance strategies
+- [ ] Rate limiting by identity age
+- [ ] Web-of-trust requiring existing trust to participate
+- [ ] Optional proof-of-work for identity registration
+
+### 6. Replay Attack on Handshake
+
+**Threat:** Attacker captures and replays old handshake proofs.
+
+**Status:** MITIGATED in current implementation.
+
+**How:**
+- Challenge contains nonce + timestamp
+- Verifier checks timestamp freshness (default: 5 minutes)
+- Nonce cache prevents reuse within window
+
+**Verify:**
+- [x] Nonce included in challenge
+- [x] Timestamp validation implemented
+- [x] Nonce cache implemented
+- [ ] Document timestamp tolerance configuration
+
+---
+
+## Reference Implementation Hardening
+
+### Code Quality
+
+- [ ] Fuzz testing for parsers (DID, signatures, messages)
+- [ ] Property-based testing for crypto operations
+- [ ] Dependency audit (check for known vulnerabilities)
+- [ ] No unsafe code without justification
+
+### Cryptographic Hygiene
+
+- [x] Use audited Ed25519 library (ed25519-dalek)
+- [ ] Verify constant-time operations where needed
+- [ ] Document RNG requirements
+- [ ] Add signature malleability notes
+
+### Error Handling
+
+- [ ] No secret information in error messages
+- [ ] Consistent error types across crates
+- [ ] Document which errors are "expected" vs "bugs"
+
+---
+
+## Interoperability Security
+
+When multiple implementations exist:
+
+### Protocol Compliance
+
+- [ ] Create test vectors for all message types
+- [ ] Publish conformance test suite
+- [ ] Document edge cases and error handling
+
+### Version Negotiation
+
+- [x] Version field in handshake Hello message
+- [ ] Document upgrade path for protocol changes
+- [ ] Define backward compatibility policy
+
+---
+
+## Operator Guidance
+
+For anyone running AIP infrastructure (resolver, log, relay):
+
+### Resolver Operators
+
+```
+MUST:
+- Verify DID Document signatures before storing
+- Return 404 for unknown DIDs (not fabricated documents)
+- Support HTTPS
+
+SHOULD:
+- Rate limit requests
+- Cache with appropriate TTL
+- Log access for debugging (not for surveillance)
+
+MUST NOT:
+- Modify DID Documents
+- Track agent relationships
+- Require authentication to resolve
+```
+
+### Log Operators
+
+```
+MUST:
+- Verify subject signatures before appending
+- Maintain append-only property (Merkle tree)
+- Provide inclusion proofs on request
+- Sign all entries
+
+SHOULD:
+- Publish signed tree heads regularly
+- Support third-party auditing
+- Document retention policy
+
+MUST NOT:
+- Silently modify or delete entries
+- Show different views to different clients
+```
+
+### Relay Operators
+
+```
+MUST:
+- Verify statement signatures before accepting
+- Reject malformed statements
+
+SHOULD:
+- Rate limit by issuer identity
+- Support gossip with other relays
+- Prune old statements per policy
+
+MUST NOT:
+- Forge trust statements
+- Require statements (agents can operate without relay)
+```
+
+---
+
+## What We're NOT Solving
+
+### Out of Scope
+
+| Issue | Why Out of Scope |
+|-------|-----------------|
+| Secure key storage | Implementation-specific (HSM, enclave, etc.) |
+| Agent behavior | Identity ≠ trustworthiness |
+| Content moderation | Application layer concern |
+| Legal identity | Different problem (use existing SSI) |
+| Quantum resistance | Future protocol version |
+
+### Explicitly Not Guaranteed
+
+- "This agent is good" — Identity only proves consistency, not trustworthiness
+- "This agent is human/AI" — Protocol is agent-type agnostic
+- "This endpoint is safe" — DID Document tells you where, not whether to connect
+
+---
+
+## Roadmap
+
+### Now (Reference Implementation)
+
+- [x] Core crypto (Ed25519, signatures)
 - [x] Self-certifying DIDs
-- [x] Handshake protocol
+- [x] Handshake protocol with replay protection
+- [x] Signed DID Documents
 - [x] Transparency log structure
 - [x] Trust statements
+- [ ] Fuzz testing
+- [ ] Test vectors for interop
+- [ ] Operator documentation
 
-### Phase 1: Trust Distribution (Critical)
+### Next (Protocol Hardening)
 
-**Goal:** Remove single points of trust failure
+- [ ] Formal protocol specification (machine-readable)
+- [ ] Conformance test suite
+- [ ] Security review of reference code
+- [ ] Client-side log consistency checks
 
-#### 1.1 Multi-Resolver Architecture
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Client Query                            │
-└─────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-        ┌──────────┐   ┌──────────┐   ┌──────────┐
-        │Resolver A│   │Resolver B│   │Resolver C│
-        │(Operator1)│   │(Operator2)│   │(Operator3)│
-        └──────────┘   └──────────┘   └──────────┘
-              │               │               │
-              └───────────────┼───────────────┘
-                              ▼
-                    ┌─────────────────┐
-                    │ Consensus (2/3) │
-                    └─────────────────┘
-```
+### Future (Federation)
 
-**Implementation:**
+Per spec, when demand exists:
+- [ ] Multi-operator log (witnessed)
+- [ ] Gossip protocol for relays
 - [ ] Resolver federation protocol
-- [ ] Client queries multiple resolvers
-- [ ] Consensus on DID Document (2-of-3 or 3-of-5)
-- [ ] Automatic failover
-- [ ] Resolver reputation tracking
-
-#### 1.2 Witnessed Transparency Log
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Log Entry                                 │
-└─────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-        ┌──────────┐   ┌──────────┐   ┌──────────┐
-        │ Witness A│   │ Witness B│   │ Witness C│
-        └──────────┘   └──────────┘   └──────────┘
-              │               │               │
-              └───────────────┼───────────────┘
-                              ▼
-                    ┌─────────────────┐
-                    │  Multi-signed   │
-                    │     Entry       │
-                    └─────────────────┘
-```
-
-**Implementation:**
-- [ ] Witness protocol specification
-- [ ] Multi-signature on log entries
-- [ ] Gossip protocol for consistency
-- [ ] Audit protocol (clients can verify)
-- [ ] Signed tree heads (like Certificate Transparency)
-
-#### 1.3 Client-Side Verification
-- [ ] Clients verify DID Document signatures locally
-- [ ] Clients check log consistency proofs
-- [ ] Clients cache and compare across sessions
-- [ ] Alert on conflicting information
-
-### Phase 2: Operational Security
-
-#### 2.1 Key Management
-- [ ] HSM integration guide
-- [ ] Secure enclave support (SGX, ARM TrustZone)
-- [ ] Key ceremony documentation
-- [ ] Automated session key rotation
-- [ ] Emergency revocation procedures
-
-#### 2.2 Service Hardening
-- [ ] Rate limiting (per-DID, per-IP)
-- [ ] DDoS mitigation
-- [ ] TLS 1.3 everywhere
-- [ ] Certificate pinning
-- [ ] Input validation audit
-- [ ] Dependency audit
-
-#### 2.3 Monitoring & Alerting
-- [ ] Anomaly detection
-- [ ] Revocation monitoring
-- [ ] Service health dashboards
-- [ ] Incident response playbook
-
-### Phase 3: Resilience
-
-#### 3.1 Geographic Distribution
-- [ ] Multi-region deployment
-- [ ] Edge caching for resolvers
-- [ ] Anycast routing
-
-#### 3.2 Disaster Recovery
-- [ ] Backup procedures
-- [ ] Recovery testing
-- [ ] Data export/import
-
-#### 3.3 Graceful Degradation
-- [ ] Offline verification mode
-- [ ] Cached credential validation
-- [ ] Service isolation
-
-### Phase 4: Formal Verification
-
-#### 4.1 Security Audit
-- [ ] Third-party code audit
-- [ ] Cryptographic review
-- [ ] Penetration testing
-
-#### 4.2 Formal Methods
-- [ ] Protocol specification in TLA+ or similar
-- [ ] Proof of security properties
-- [ ] Model checking
 
 ---
 
-## 4. Production Deployment Requirements
+## Security Checklist for Implementers
 
-### 4.1 Minimum Viable Production
-
-Before deploying for real users:
-
-| Requirement | Description | Status |
-|-------------|-------------|--------|
-| Multi-resolver | At least 3 independent resolvers | ❌ |
-| Witnessed log | At least 3 independent witnesses | ❌ |
-| Security audit | Third-party review completed | ❌ |
-| Rate limiting | All public endpoints protected | ❌ |
-| Monitoring | Full observability stack | ❌ |
-| Incident response | Documented procedures | ❌ |
-| Key management | HSM or equivalent for operators | ❌ |
-
-### 4.2 Operational Requirements
-
-| Aspect | Requirement |
-|--------|-------------|
-| **Availability** | 99.9% uptime (8.7h downtime/year max) |
-| **Latency** | < 100ms p99 for resolution |
-| **Throughput** | 10,000 verifications/second |
-| **Recovery** | < 1 hour RTO, < 5 minute RPO |
-
-### 4.3 Compliance Considerations
-
-- Data residency requirements
-- GDPR (if handling EU users)
-- Key escrow laws (varies by jurisdiction)
-- Audit logging requirements
-
----
-
-## 5. Governance
-
-### 5.1 Who Operates Infrastructure?
-
-**Options:**
-
-| Model | Pros | Cons |
-|-------|------|------|
-| **Single Operator** | Simple, fast decisions | Single point of failure/trust |
-| **Consortium** | Distributed trust | Coordination overhead |
-| **DAO** | Fully decentralized | Slow, complex |
-| **Federated** | Balance of speed/trust | Requires agreements |
-
-**Recommendation:** Start with consortium of 3-5 trusted operators, evolve toward federation.
-
-### 5.2 Decision Making
-
-- Protocol changes: Require supermajority (4/5)
-- Operational changes: Simple majority
-- Emergency response: Any operator can act, review within 24h
-
-### 5.3 Transparency
-
-- All protocol changes publicly discussed
-- Operator identities public
-- Regular security reports
-- Open source everything
-
----
-
-## 6. Migration Path
-
-### From Prototype to Production
+Before deploying an AIP implementation:
 
 ```
-Phase 0 (Now)           Phase 1 (3 months)      Phase 2 (6 months)
-─────────────────────────────────────────────────────────────────
-Single resolver    →    3 resolvers         →   5+ resolvers
-Single log         →    3 witnesses         →   5+ witnesses  
-No rate limiting   →    Basic limits        →   Adaptive limits
-No monitoring      →    Basic dashboards    →   Full observability
-No audit           →    Internal review     →   Third-party audit
+CRYPTOGRAPHY
+[ ] Using audited Ed25519 library
+[ ] RNG properly seeded
+[ ] Signatures verified before trusting any data
+[ ] DID Document signatures checked
+
+PROTOCOL
+[ ] Handshake timestamps validated
+[ ] Nonces not reused
+[ ] Version negotiation implemented
+[ ] Errors don't leak secrets
+
+KEY MANAGEMENT
+[ ] Root key stored securely
+[ ] Session keys rotated regularly
+[ ] Recovery key exists and is offline
+[ ] Revocation procedure documented
+
+NETWORK
+[ ] TLS for all connections
+[ ] Resolver responses verified
+[ ] Graceful handling of unavailable services
+[ ] Fail closed, not open
 ```
 
-### Backward Compatibility
-
-- DID format: Stable, won't change
-- Handshake protocol: Versioned, negotiate on connect
-- API: Versioned endpoints, deprecation policy
-
 ---
 
-## 7. Open Questions
-
-1. **Economic model:** How are operators incentivized? Fees? Grants?
-2. **Spam prevention:** PoW vs staking vs reputation?
-3. **Quantum readiness:** When to add post-quantum signatures?
-4. **Legal entity:** Does the consortium need a legal structure?
-5. **Liability:** Who's responsible if the system fails?
-
----
-
-## 8. Next Steps
-
-### Immediate (This Week)
-1. [ ] Review and finalize this document
-2. [ ] Identify potential consortium members
-3. [ ] Scope Phase 1 implementation
-
-### Short Term (This Month)
-1. [ ] Design multi-resolver protocol
-2. [ ] Design witness protocol
-3. [ ] Implement rate limiting
-4. [ ] Set up basic monitoring
-
-### Medium Term (This Quarter)
-1. [ ] Deploy 3-resolver testnet
-2. [ ] Deploy witnessed log testnet
-3. [ ] Begin security audit process
-4. [ ] Document operational procedures
-
----
-
-## Appendix A: Security Checklist
-
-Before each release:
-
-- [ ] All dependencies updated
-- [ ] No known CVEs in dependency tree
-- [ ] All inputs validated
-- [ ] All crypto operations use constant-time implementations
-- [ ] No secrets in logs
-- [ ] Rate limiting tested
-- [ ] Error messages don't leak information
-
----
-
-## Appendix B: Incident Response Template
-
-**Severity Levels:**
-- **P0:** Complete system compromise, immediate response
-- **P1:** Partial compromise or major availability issue
-- **P2:** Minor security issue, no immediate impact
-- **P3:** Hardening opportunity, no active threat
-
-**Response Steps:**
-1. Assess and classify
-2. Contain (if active threat)
-3. Notify stakeholders
-4. Investigate
-5. Remediate
-6. Post-mortem
-
----
-
-*This is a living document. Last review: February 2026*
+*This document describes security properties of the AIP protocol and reference implementation. Individual deployments may have additional requirements.*
