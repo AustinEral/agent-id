@@ -2,126 +2,157 @@
 
 Get started with the Agent Identity Protocol in 5 minutes.
 
-## Installation
+## Try It (No Rust Required)
 
 ```bash
-# Clone and build
 git clone https://github.com/AustinEral/aip.git
 cd aip
-cargo build --release
 
-# Add to PATH (optional)
-export PATH="$PWD/target/release:$PATH"
+# Generate an identity
+cargo run --bin aip -- identity generate
+
+# Test a handshake
+cargo run --bin aip -- handshake test
+
+# Run the full example
+cargo run -p aip-examples --example basic
 ```
 
-## Create Your Identity
+---
 
-```bash
-# Generate a new identity
-aip identity generate
+## Library Usage
 
-# Output:
-# Generated new identity:
-#   DID: did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
-#   Saved to: ~/.config/aip/identity.json
+### Add Dependencies
+
+```toml
+[dependencies]
+aip-core = { git = "https://github.com/AustinEral/aip" }
+aip-handshake = { git = "https://github.com/AustinEral/aip" }
+aip-trust = { git = "https://github.com/AustinEral/aip" }
 ```
 
-Your DID (Decentralized Identifier) is derived from your public key. It's globally unique and self-certifying.
+### Create an Identity
 
-## View Your Identity
+```rust
+use aip_core::{RootKey, DidDocument};
 
-```bash
-aip identity show
-
-# Output:
-# Identity:
-#   DID: did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
-#   Key ID: 7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
-#   File: /home/user/.config/aip/identity.json
+fn main() -> Result<(), aip_core::Error> {
+    // Generate a new identity
+    let root_key = RootKey::generate();
+    let did = root_key.did();
+    
+    println!("Your DID: {}", did);
+    // did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+    
+    Ok(())
+}
 ```
 
-## Create a DID Document
+### Create a DID Document
 
-```bash
-# Create a signed document with a handshake endpoint
-aip document create -e https://myagent.example.com/handshake
+```rust
+use aip_core::{RootKey, DidDocument};
 
-# Output: (JSON DID Document)
+fn main() -> Result<(), aip_core::Error> {
+    let root_key = RootKey::generate();
+    
+    // Create and sign a DID Document
+    let document = DidDocument::new(&root_key)
+        .with_handshake_endpoint("https://myagent.example/handshake")
+        .sign(&root_key)?;
+    
+    // Verify it's valid
+    document.verify()?;
+    
+    println!("{}", serde_json::to_string_pretty(&document).unwrap());
+    
+    Ok(())
+}
 ```
 
-## Test a Handshake
+### Perform a Handshake
 
-The handshake protocol proves two agents control their claimed identities.
+```rust
+use aip_core::RootKey;
+use aip_handshake::{
+    Verifier,
+    messages::Hello,
+    protocol::{sign_proof, verify_counter_proof},
+};
 
-```bash
-# Run a local test (creates a temporary peer)
-aip handshake test
-
-# Output:
-# Testing handshake...
-#   Our DID: did:aip:1:7Tqg2...
-#   Peer DID: did:aip:1:8Rth...
-#
-# 1. Sent Hello
-# 2. Received Challenge
-# 3. Sent Proof
-# 4. Received ProofAccepted
-# 5. Verified counter-proof
-#
-# ✓ Handshake successful!
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Two agents
+    let alice = RootKey::generate();
+    let bob = RootKey::generate();
+    
+    // Bob initiates by sending Hello
+    let hello = Hello::new(bob.did().to_string());
+    
+    // Alice creates a challenge
+    let verifier = Verifier::new(alice.did());
+    let challenge = verifier.handle_hello(&hello)?;
+    
+    // Bob signs a proof
+    let proof = sign_proof(&challenge, &bob.did(), &bob, Some(alice.did().to_string()))?;
+    
+    // Alice verifies Bob
+    verifier.verify_proof(&proof, &challenge)?;
+    
+    // Alice accepts and sends counter-proof
+    let accepted = verifier.accept_proof(&proof, &alice)?;
+    
+    // Bob verifies Alice
+    verify_counter_proof(&accepted.counter_proof, proof.counter_challenge.as_ref().unwrap())?;
+    
+    println!("✓ Mutual verification complete!");
+    
+    Ok(())
+}
 ```
 
-## Real Handshake (Two Terminals)
+### Issue Trust Statements
 
-**Terminal 1 - Start server:**
-```bash
-aip handshake serve --port 8400
-# Listening on http://0.0.0.0:8400
+```rust
+use aip_core::RootKey;
+use aip_trust::TrustStatement;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let alice = RootKey::generate();
+    let bob = RootKey::generate();
+    
+    // Alice trusts Bob
+    let statement = TrustStatement::new(
+        alice.did(),
+        bob.did(),
+        0.85,  // trust score 0.0-1.0
+    )
+    .with_tags(vec!["helpful".into(), "reliable".into()])
+    .sign(&alice)?;
+    
+    // Verify the statement
+    statement.verify()?;
+    
+    println!("Trust issued: {} → {} (score: {})", 
+        alice.did(), bob.did(), statement.score);
+    
+    Ok(())
+}
 ```
 
-**Terminal 2 - Connect:**
-```bash
-# Use a different identity file
-aip -i ./peer.json identity generate
-aip -i ./peer.json handshake connect http://localhost:8400
-
-# ✓ Handshake successful!
-```
-
-## Publish to a Resolver
-
-```bash
-# Start the resolver service (separate terminal)
-cargo run -p aip-resolver-service
-
-# Publish your document
-aip document publish -r http://localhost:8500 -e https://myagent.example.com/handshake
-
-# ✓ Document published!
-```
-
-## Resolve a DID
-
-```bash
-aip resolve did:aip:1:7Tqg2... -r http://localhost:8500
-
-# ✓ Document signature verified
-# { ... DID Document ... }
-```
+---
 
 ## Next Steps
 
-- Read [INTEGRATION.md](./INTEGRATION.md) for programmatic usage
-- Review [API.md](./API.md) for service endpoints
-- See [PROTOCOL.md](../spec/PROTOCOL.md) for the full specification
+- [INTEGRATION.md](./INTEGRATION.md) — Full integration patterns
+- [API.md](./API.md) — Service endpoints
+- [PROTOCOL.md](../spec/PROTOCOL.md) — Protocol specification
 
 ## Key Concepts
 
 | Concept | Description |
 |---------|-------------|
-| **DID** | `did:aip:1:<pubkey>` — Your unique, self-certifying identifier |
-| **Root Key** | Ed25519 keypair that defines your identity |
-| **Session Key** | Short-lived key for daily operations (delegated from root) |
-| **DID Document** | Signed JSON describing how to interact with you |
-| **Handshake** | Challenge-response protocol proving identity ownership |
-| **Transparency Log** | Append-only audit trail of all identity events |
+| **DID** | `did:aip:1:<pubkey>` — Self-certifying identifier |
+| **RootKey** | Ed25519 keypair defining identity |
+| **DidDocument** | Signed JSON describing how to interact with an agent |
+| **Handshake** | Challenge-response proving identity ownership |
+| **TrustStatement** | Signed attestation of trust between agents |

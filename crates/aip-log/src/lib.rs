@@ -446,12 +446,12 @@ impl TransparencyLog {
         let mut idx = index;
 
         while level.len() > 1 {
-            let sibling_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
+            let sibling_idx = if idx.is_multiple_of(2) { idx + 1 } else { idx - 1 };
 
             if sibling_idx < level.len() {
                 path.push(ProofNode {
                     hash: level[sibling_idx].clone(),
-                    position: if idx % 2 == 0 {
+                    position: if idx.is_multiple_of(2) {
                         ProofPosition::Right
                     } else {
                         ProofPosition::Left
