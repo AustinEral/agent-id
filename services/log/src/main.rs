@@ -5,10 +5,10 @@
 use aip_core::RootKey;
 use aip_log::{InclusionProof, LogEntry, TransparencyLog};
 use axum::{
-    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
     routing::{get, post},
+    Json, Router,
 };
 use clap::Parser;
 use serde::{Deserialize, Serialize};

@@ -30,4 +30,4 @@ pub mod protocol;
 
 pub use error::{HandshakeError, Result};
 pub use messages::{Challenge, Hello, Proof, ProofAccepted};
-pub use protocol::{Verifier, sign_proof, verify_counter_proof};
+pub use protocol::{sign_proof, verify_counter_proof, Verifier};

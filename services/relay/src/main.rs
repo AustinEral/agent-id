@@ -5,9 +5,9 @@
 
 #[cfg(test)]
 use aip_core::RootKey;
-use aip_trust::{TrustStatement, BlockStatement};
 #[cfg(test)]
 use aip_trust::BlockSeverity;
+use aip_trust::{BlockStatement, TrustStatement};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -100,9 +100,13 @@ impl TrustStore {
     }
 
     /// Add a trust statement.
-    pub fn add_statement(&mut self, statement: TrustStatement, max_per_identity: usize) -> Result<(), String> {
+    pub fn add_statement(
+        &mut self,
+        statement: TrustStatement,
+        max_per_identity: usize,
+    ) -> Result<(), String> {
         let issuer = &statement.issuer;
-        
+
         // Check rate limit
         let count = self.statement_counts.get(issuer).copied().unwrap_or(0);
         if count >= max_per_identity {
@@ -197,9 +201,16 @@ impl TrustStore {
         let mut nodes = std::collections::HashSet::new();
         let mut edges = Vec::new();
         let mut seen_edges = std::collections::HashSet::new();
-        
-        self.collect_graph_data(center, depth, &mut nodes, &mut edges, &mut seen_edges, &mut std::collections::HashSet::new());
-        
+
+        self.collect_graph_data(
+            center,
+            depth,
+            &mut nodes,
+            &mut edges,
+            &mut seen_edges,
+            &mut std::collections::HashSet::new(),
+        );
+
         GraphResponse {
             center: center.to_string(),
             depth,
@@ -237,8 +248,15 @@ impl TrustStore {
                         timestamp: stmt.timestamp.timestamp_millis(),
                     });
                 }
-                
-                self.collect_graph_data(&stmt.subject, remaining_depth - 1, nodes, edges, seen_edges, visited);
+
+                self.collect_graph_data(
+                    &stmt.subject,
+                    remaining_depth - 1,
+                    nodes,
+                    edges,
+                    seen_edges,
+                    visited,
+                );
             }
         }
 
@@ -256,8 +274,15 @@ impl TrustStore {
                         timestamp: stmt.timestamp.timestamp_millis(),
                     });
                 }
-                
-                self.collect_graph_data(&stmt.issuer, remaining_depth - 1, nodes, edges, seen_edges, visited);
+
+                self.collect_graph_data(
+                    &stmt.issuer,
+                    remaining_depth - 1,
+                    nodes,
+                    edges,
+                    seen_edges,
+                    visited,
+                );
             }
         }
     }
@@ -293,7 +318,9 @@ pub struct GraphQuery {
     depth: usize,
 }
 
-fn default_depth() -> usize { 2 }
+fn default_depth() -> usize {
+    2
+}
 
 #[derive(Debug, Serialize)]
 pub struct StatsResponse {
@@ -334,20 +361,34 @@ async fn submit_statement(
         warn!("Invalid statement signature: {}", e);
         return (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: format!("Invalid signature: {}", e) }),
-        ).into_response();
+            Json(ErrorResponse {
+                error: format!("Invalid signature: {}", e),
+            }),
+        )
+            .into_response();
     }
 
     // Add to store
     let mut store = state.store.write().unwrap();
     match store.add_statement(statement.clone(), state.config.max_statements_per_identity) {
         Ok(()) => {
-            info!("Added trust statement: {} -> {}", statement.issuer, statement.subject);
-            (StatusCode::CREATED, Json(serde_json::json!({"status": "accepted"}))).into_response()
+            info!(
+                "Added trust statement: {} -> {}",
+                statement.issuer, statement.subject
+            );
+            (
+                StatusCode::CREATED,
+                Json(serde_json::json!({"status": "accepted"})),
+            )
+                .into_response()
         }
         Err(e) => {
             warn!("Failed to add statement: {}", e);
-            (StatusCode::TOO_MANY_REQUESTS, Json(ErrorResponse { error: e })).into_response()
+            (
+                StatusCode::TOO_MANY_REQUESTS,
+                Json(ErrorResponse { error: e }),
+            )
+                .into_response()
         }
     }
 }
@@ -362,16 +403,26 @@ async fn submit_block(
         warn!("Invalid block signature: {}", e);
         return (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: format!("Invalid signature: {}", e) }),
-        ).into_response();
+            Json(ErrorResponse {
+                error: format!("Invalid signature: {}", e),
+            }),
+        )
+            .into_response();
     }
 
     // Add to store
     let mut store = state.store.write().unwrap();
     store.add_block(statement.clone());
-    info!("Added block statement: {} -> {}", statement.issuer, statement.subject);
-    
-    (StatusCode::CREATED, Json(serde_json::json!({"status": "accepted"}))).into_response()
+    info!(
+        "Added block statement: {} -> {}",
+        statement.issuer, statement.subject
+    );
+
+    (
+        StatusCode::CREATED,
+        Json(serde_json::json!({"status": "accepted"})),
+    )
+        .into_response()
 }
 
 /// Query trust statements.
@@ -382,28 +433,28 @@ async fn query_statements(
     let store = state.store.read().unwrap();
 
     let statements: Vec<TrustStatement> = match (&query.issuer, &query.subject) {
-        (Some(issuer), Some(subject)) => {
-            store.get_statement(issuer, subject)
-                .map(|s| vec![s.statement.clone()])
-                .unwrap_or_default()
-        }
-        (Some(issuer), None) => {
-            store.get_by_issuer(issuer)
-                .into_iter()
-                .map(|s| s.statement.clone())
-                .collect()
-        }
-        (None, Some(subject)) => {
-            store.get_by_subject(subject)
-                .into_iter()
-                .map(|s| s.statement.clone())
-                .collect()
-        }
+        (Some(issuer), Some(subject)) => store
+            .get_statement(issuer, subject)
+            .map(|s| vec![s.statement.clone()])
+            .unwrap_or_default(),
+        (Some(issuer), None) => store
+            .get_by_issuer(issuer)
+            .into_iter()
+            .map(|s| s.statement.clone())
+            .collect(),
+        (None, Some(subject)) => store
+            .get_by_subject(subject)
+            .into_iter()
+            .map(|s| s.statement.clone())
+            .collect(),
         (None, None) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse { error: "Must specify issuer or subject".to_string() }),
-            ).into_response();
+                Json(ErrorResponse {
+                    error: "Must specify issuer or subject".to_string(),
+                }),
+            )
+                .into_response();
         }
     };
 
@@ -513,7 +564,12 @@ mod tests {
     async fn test_health() {
         let app = build_router(test_state());
         let response = app
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -524,7 +580,12 @@ mod tests {
     async fn test_stats_empty() {
         let app = build_router(test_state());
         let response = app
-            .oneshot(Request::builder().uri("/stats").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/stats")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -544,7 +605,9 @@ mod tests {
         store.add_statement(statement.clone(), 100).unwrap();
 
         assert_eq!(store.total_statements(), 1);
-        assert!(store.get_statement(&issuer.did().to_string(), &subject.did().to_string()).is_some());
+        assert!(store
+            .get_statement(&issuer.did().to_string(), &subject.did().to_string())
+            .is_some());
     }
 
     #[test]
@@ -557,7 +620,7 @@ mod tests {
             let statement = TrustStatement::new(issuer.did(), subject.did(), 0.5)
                 .sign(&issuer)
                 .unwrap();
-            
+
             let result = store.add_statement(statement, 5);
             if i < 5 {
                 assert!(result.is_ok());

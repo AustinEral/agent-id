@@ -3,10 +3,10 @@
 use aip_core::{Did, DidDocument, RootKey};
 use aip_handshake::{
     messages::{Hello, Proof, ProofAccepted},
-    protocol::{Verifier, sign_proof, verify_counter_proof},
+    protocol::{sign_proof, verify_counter_proof, Verifier},
 };
 use anyhow::{Context, Result};
-use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
+use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

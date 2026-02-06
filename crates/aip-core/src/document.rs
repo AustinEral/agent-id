@@ -3,7 +3,7 @@
 //! A DID Document contains the public keys and service endpoints for an agent.
 //! Documents are self-signed to prevent tampering.
 
-use crate::{Did, Error, Result, RootKey, signing};
+use crate::{signing, Did, Error, Result, RootKey};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

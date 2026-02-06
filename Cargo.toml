@@ -14,9 +14,9 @@ members = [
 
 [workspace.package]
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 license = "MIT"
-repository = "https://github.com/AustinEral/api"
+repository = "https://github.com/AustinEral/aip"
 
 [workspace.dependencies]
 # Crypto
@@ -51,4 +51,3 @@ tower-http = { version = "0.5", features = ["cors"] }
 
 # Logging
 tracing = "0.1"
-tracing-subscriber = "0.3"

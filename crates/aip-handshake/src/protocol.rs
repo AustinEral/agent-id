@@ -2,7 +2,7 @@
 
 use crate::error::{HandshakeError, Result};
 use crate::messages::{Challenge, CounterChallenge, CounterProof, Hello, Proof, ProofAccepted};
-use aip_core::{Did, RootKey, signing};
+use aip_core::{signing, Did, RootKey};
 use chrono::Utc;
 use std::collections::HashSet;
 use std::sync::Mutex;
