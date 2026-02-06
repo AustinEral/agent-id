@@ -8,15 +8,15 @@
 //! - JCS canonicalization and signing
 //! - Delegation tokens
 
+pub mod delegation;
 pub mod did;
+pub mod error;
 pub mod keys;
 pub mod signing;
-pub mod delegation;
-pub mod error;
 
 pub use did::Did;
-pub use keys::{RootKey, SessionKey};
 pub use error::Error;
+pub use keys::{RootKey, SessionKey};
 
 /// Result type for aip-core operations.
 pub type Result<T> = std::result::Result<T, Error>;

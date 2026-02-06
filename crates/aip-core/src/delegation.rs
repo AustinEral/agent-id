@@ -1,6 +1,6 @@
 //! Delegation tokens for session and service keys.
 
-use crate::{signing, Did, Error, Result, RootKey};
+use crate::{Did, Error, Result, RootKey, signing};
 use chrono::{DateTime, Utc};
 use ed25519_dalek::{Signature, Verifier};
 use serde::{Deserialize, Serialize};
@@ -38,31 +38,31 @@ pub struct Delegation {
     /// Token type identifier.
     #[serde(rename = "type")]
     pub type_: String,
-    
+
     /// Protocol version.
     pub version: String,
-    
+
     /// The root DID this delegation is for.
     pub root_did: String,
-    
+
     /// Public key being delegated to (base58).
     pub delegate_pubkey: String,
-    
+
     /// Type of delegation.
     pub delegate_type: DelegationType,
-    
+
     /// When this delegation was issued (unix ms).
     pub issued_at: i64,
-    
+
     /// When this delegation expires (unix ms).
     pub expires_at: i64,
-    
+
     /// Capabilities granted.
     pub capabilities: Vec<Capability>,
-    
+
     /// Unique ID for revocation.
     pub revocation_id: String,
-    
+
     /// Signature from the root key.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<String>,
@@ -95,37 +95,35 @@ impl Delegation {
     pub fn sign(mut self, root_key: &RootKey) -> Result<Self> {
         // Clear signature before hashing
         self.signature = None;
-        
+
         let canonical = signing::canonicalize(&self)?;
         let sig = root_key.sign(&canonical);
         self.signature = Some(base64::Engine::encode(
             &base64::engine::general_purpose::STANDARD,
             sig.to_bytes(),
         ));
-        
+
         Ok(self)
     }
 
     /// Verify this delegation's signature.
     pub fn verify(&self) -> Result<()> {
         let sig_b64 = self.signature.as_ref().ok_or(Error::InvalidSignature)?;
-        let sig_bytes = base64::Engine::decode(
-            &base64::engine::general_purpose::STANDARD,
-            sig_b64,
-        )
-        .map_err(|_| Error::InvalidSignature)?;
-        
-        let signature = Signature::from_bytes(&sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?);
-        
+        let sig_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, sig_b64)
+            .map_err(|_| Error::InvalidSignature)?;
+
+        let signature =
+            Signature::from_bytes(&sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?);
+
         // Parse the root DID to get the public key
         let root_did: Did = self.root_did.parse()?;
         let public_key = root_did.public_key()?;
-        
+
         // Canonicalize without signature
         let mut unsigned = self.clone();
         unsigned.signature = None;
         let canonical = signing::canonicalize(&unsigned)?;
-        
+
         public_key
             .verify(&canonical, &signature)
             .map_err(|_| Error::InvalidSignature)
@@ -134,15 +132,15 @@ impl Delegation {
     /// Check if this delegation is currently valid (not expired, not before issued).
     pub fn is_valid_at(&self, now: DateTime<Utc>) -> Result<()> {
         let now_ms = now.timestamp_millis();
-        
+
         if now_ms < self.issued_at {
             return Err(Error::DelegationNotYetValid);
         }
-        
+
         if now_ms > self.expires_at {
             return Err(Error::DelegationExpired);
         }
-        
+
         Ok(())
     }
 
@@ -161,7 +159,7 @@ mod tests {
     fn test_delegation_roundtrip() {
         let root = RootKey::generate();
         let session_pubkey = "test_session_key_base58".to_string();
-        
+
         let delegation = Delegation::new(
             root.did(),
             session_pubkey,
@@ -172,14 +170,14 @@ mod tests {
 
         let signed = delegation.sign(&root).unwrap();
         assert!(signed.signature.is_some());
-        
+
         signed.verify().unwrap();
     }
 
     #[test]
     fn test_delegation_expiry() {
         let root = RootKey::generate();
-        
+
         let delegation = Delegation::new(
             root.did(),
             "test".to_string(),
