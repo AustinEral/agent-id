@@ -8,7 +8,7 @@
 //! - DID Document structure and signing
 //! - JCS canonicalization and signing
 //! - Delegation tokens
-//! - Key lifecycle management (rotation, revocation, recovery)
+//! - Key lifecycle management (rotation, revocation)
 //! - Interaction receipts
 
 pub mod delegation;
@@ -24,7 +24,7 @@ pub use did::Did;
 pub use document::DidDocument;
 pub use error::Error;
 pub use keys::{RootKey, SessionKey};
-pub use lifecycle::{KeyRotation, RecoveryCancellation, Revocation, RootRecovery};
+pub use lifecycle::{KeyRotation, Revocation};
 pub use receipt::{InteractionContext, InteractionOutcome, InteractionReceipt, InteractionType};
 
 /// Result type for aip-core operations.

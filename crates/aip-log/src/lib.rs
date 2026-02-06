@@ -4,8 +4,7 @@
 //! This enables detection of key compromise and prevents silent key rotation.
 
 use aip_core::{
-    signing, Did, DidDocument, Error as CoreError, KeyRotation, RecoveryCancellation, Revocation,
-    RootKey, RootRecovery,
+    signing, Did, DidDocument, Error as CoreError, KeyRotation, Revocation, RootKey,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -47,10 +46,6 @@ pub enum EventType {
     KeyRotation,
     /// Key revocation
     KeyRevocation,
-    /// Root recovery initiated
-    RootRecovery,
-    /// Recovery cancelled
-    RecoveryCancelled,
 }
 
 /// A log entry representing an identity event.
@@ -451,16 +446,12 @@ impl TransparencyLog {
         let mut idx = index;
 
         while level.len() > 1 {
-            let sibling_idx = if idx.is_multiple_of(2) {
-                idx + 1
-            } else {
-                idx - 1
-            };
+            let sibling_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
 
             if sibling_idx < level.len() {
                 path.push(ProofNode {
                     hash: level[sibling_idx].clone(),
-                    position: if idx.is_multiple_of(2) {
+                    position: if idx % 2 == 0 {
                         ProofPosition::Right
                     } else {
                         ProofPosition::Left
@@ -550,40 +541,6 @@ pub fn create_revocation_entry(
         previous_hash,
     );
     entry.sign(subject_key)
-}
-
-/// Helper to create a root recovery log entry.
-pub fn create_recovery_entry(
-    recovery: &RootRecovery,
-    recovery_key: &RootKey,
-    previous_hash: String,
-    sequence: u64,
-) -> Result<LogEntry> {
-    let entry = LogEntry::new(
-        sequence,
-        EventType::RootRecovery,
-        recovery.did.clone(),
-        serde_json::to_value(recovery)?,
-        previous_hash,
-    );
-    entry.sign(recovery_key)
-}
-
-/// Helper to create a recovery cancellation log entry.
-pub fn create_cancellation_entry(
-    cancellation: &RecoveryCancellation,
-    root_key: &RootKey,
-    previous_hash: String,
-    sequence: u64,
-) -> Result<LogEntry> {
-    let entry = LogEntry::new(
-        sequence,
-        EventType::RecoveryCancelled,
-        cancellation.did.clone(),
-        serde_json::to_value(cancellation)?,
-        previous_hash,
-    );
-    entry.sign(root_key)
 }
 
 /// Helper to create an identity creation log entry.

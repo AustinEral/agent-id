@@ -126,7 +126,6 @@ did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
 │  • Stored securely (HSM, secure enclave) │
 │  • Rarely used directly                  │
 │  • Signs key rotation events             │
-│  • Signs recovery key designations       │
 └──────────────────┬──────────────────────┘
                    │ signs
         ┌──────────┴──────────┐
@@ -135,7 +134,6 @@ did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
 │   SESSION KEYS    │  │   RECOVERY KEY    │
 │  • Short-lived    │  │  • Long-lived     │
 │  • Rotates often  │  │  • Offline storage│
-│  • Daily ops      │  │  • Root recovery  │
 └───────────────────┘  └───────────────────┘
 ```
 
@@ -157,7 +155,6 @@ did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
 
 **Delegation types:**
 - `session` — Short-lived, auto-expires, for routine operations
-- `recovery` — Long-lived, can rotate root key, stored offline
 - `service` — Scoped to specific service endpoints
 
 ### 1.3 Identity Document
@@ -177,11 +174,6 @@ Each agent publishes an identity document (resolvable via the DID).
       "publicKeyMultibase": "z6Mkf..."
     },
     {
-      "id": "did:aip:1:7Tqg2...#recovery",
-      "type": "Ed25519VerificationKey2020",
-      "controller": "did:aip:1:7Tqg2...",
-      "publicKeyMultibase": "z6Mkg...",
-      "purpose": ["recovery"]
     }
   ],
   "authentication": ["did:aip:1:7Tqg2...#root"],
@@ -328,7 +320,7 @@ All identity events are recorded in an append-only transparency log for auditabi
 
 **Logged Events:**
 - `IdentityCreated` — New DID registered
-- `KeyRotation` — Root or recovery key changed
+- `KeyRotation` — Root key changed
 - `KeyRevocation` — Key marked as compromised/invalid
 - `DelegationIssued` — New session/service key authorized
 - `DelegationRevoked` — Session/service key invalidated
@@ -428,12 +420,12 @@ Future: Federated operators
   "revocation_id": "matches delegation revocation_id",
   "reason": "compromised",
   "effective_at": 1738800000000,
-  "signature": "base64(root_or_recovery_key_signature)"
+  "signature": "base64(root_key_signature)"
 }
 ```
 
 **Rules:**
-- Root key, recovery key, or parent delegator can revoke
+- Root key or parent delegator can revoke
 - Immediate effect upon log inclusion
 - Verifiers MUST check revocation status before accepting signatures
 - Fail closed: if revocation check unavailable and cache stale, reject
@@ -443,45 +435,6 @@ Future: Federated operators
 - `superseded` — Replaced by rotation
 - `expired` — Natural delegation expiry (informational)
 - `administrative` — Operator decision
-
-### 1.8 Recovery
-
-When the root key is lost or compromised, recovery enables identity continuity.
-
-**Recovery Key:**
-- Designated at identity creation or via root key signature
-- Stored offline (paper, hardware wallet, trusted custodian)
-- Can sign a special `RootRecovery` event
-
-**Recovery Flow:**
-```json
-{
-  "type": "RootRecovery",
-  "version": "1.0",
-  "did": "did:aip:1:7Tqg2...",
-  "old_root": "did:aip:1:7Tqg2...#root",
-  "new_root": {
-    "id": "did:aip:1:7Tqg2...#root-recovered",
-    "publicKeyMultibase": "z6Mkz..."
-  },
-  "recovery_key_used": "did:aip:1:7Tqg2...#recovery",
-  "reason": "root_key_lost",
-  "effective_at": 1738800000000,
-  "waiting_period": 604800000,
-  "signature": "base64(recovery_key_signature)"
-}
-```
-
-**Waiting period:**
-- Recovery takes effect after waiting period (default 7 days)
-- Original root key can cancel recovery during this window
-- Prevents instant takeover if recovery key is stolen
-- Trade-off: inconvenient for legitimate recovery
-
-**Social Recovery (future extension):**
-- Designate M-of-N trusted agents as recovery guardians
-- Recovery requires threshold signatures from guardians
-- More resilient to single key loss
 
 ---
 
@@ -885,7 +838,6 @@ Agent A                          Registry                         Agent B
 | **Log tampering** | Append-only Merkle tree, auditable by third parties |
 | **Split-view attack** | Gossip protocol, third-party monitors |
 | **Lookalike metadata** | Trust signatures, not display names |
-| **Recovery key theft** | Waiting period, original root can cancel |
 
 ### Key Security Requirements
 
@@ -894,7 +846,6 @@ Agent A                          Registry                         Agent B
 3. Revocation checks mandatory before accepting any signature
 4. Fail closed on verification errors or stale cache
 5. No silent key overwrites; all changes logged and auditable
-6. Recovery has mandatory waiting period
 
 ---
 
@@ -1000,12 +951,6 @@ Agent A                          Registry                         Agent B
 - Agents can verify Moltbook attestation signature
 - Gradual migration path
 
-### 6. Root key recovery?
-
-**Position:** Recovery key + 7-day waiting period.
-- Balance security vs convenience
-- Waiting period prevents instant takeover
-- Social recovery as future enhancement
 
 ---
 
@@ -1129,7 +1074,6 @@ Agents running on OpenClaw can integrate AIP:
 # workspace/aip/identity.yaml (encrypted)
 did: did:aip:1:7Tqg2...
 root_key_ref: vault://aip/root  # or local encrypted file
-recovery_key_ref: vault://aip/recovery
 session_key: <current session key>
 delegation: <current delegation token>
 ```
@@ -1187,7 +1131,6 @@ AIP complements A2A:
 | **DID** | Decentralized Identifier — W3C standard for self-sovereign identifiers |
 | **Root Key** | The primary Ed25519 keypair that defines an agent's identity |
 | **Session Key** | Short-lived key delegated from root, used for daily operations |
-| **Recovery Key** | Offline-stored key that can rotate a compromised root key |
 | **Delegation** | Signed authorization from root key to a subordinate key |
 | **Handshake** | Mutual authentication protocol between two agents |
 | **Transparency Log** | Append-only audit trail of all identity events |

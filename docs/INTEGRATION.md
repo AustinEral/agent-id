@@ -34,13 +34,11 @@ The DID is **self-certifying**: the public key is embedded in the identifier its
 
 ```
 Root Key (identity)
-├── Session Keys (daily operations)
-└── Recovery Key (offline backup)
+└── Session Keys (daily operations)
 ```
 
-- **Root Key**: Defines identity. Store securely. Rarely used directly.
+- **Root Key**: Defines identity. Store securely. Used for key rotation and high-value operations.
 - **Session Keys**: Short-lived, delegated from root. Used for routine signing.
-- **Recovery Key**: Can recover identity if root is lost. Store offline.
 
 ### Handshake Protocol
 
@@ -338,30 +336,6 @@ let rotation = KeyRotation::new(
 
 // Log the rotation
 log_client.append_rotation(&rotation).await?;
-```
-
-### Recovery
-
-If root key is lost, use recovery key:
-
-```rust
-use aip_core::{RootRecovery, RecoveryReason, NewKey};
-
-let new_root = RootKey::generate();
-
-let recovery = RootRecovery::new(
-    old_did,
-    format!("{}#root", old_did),
-    NewKey { /* new root key details */ },
-    format!("{}#recovery", recovery_key.did()),
-    RecoveryReason::RootKeyLost,
-)
-.sign(&recovery_key)?;
-
-// Log recovery (7-day waiting period by default)
-log_client.append_recovery(&recovery).await?;
-
-// Original root can cancel during waiting period
 ```
 
 ---
