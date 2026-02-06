@@ -3,9 +3,7 @@
 //! Provides an append-only log of identity events with Merkle tree verification.
 //! This enables detection of key compromise and prevents silent key rotation.
 
-use aip_core::{
-    signing, Did, DidDocument, Error as CoreError, KeyRotation, Revocation, RootKey,
-};
+use aip_core::{signing, Did, DidDocument, Error as CoreError, KeyRotation, Revocation, RootKey};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -446,7 +444,11 @@ impl TransparencyLog {
         let mut idx = index;
 
         while level.len() > 1 {
-            let sibling_idx = if idx.is_multiple_of(2) { idx + 1 } else { idx - 1 };
+            let sibling_idx = if idx.is_multiple_of(2) {
+                idx + 1
+            } else {
+                idx - 1
+            };
 
             if sibling_idx < level.len() {
                 path.push(ProofNode {
