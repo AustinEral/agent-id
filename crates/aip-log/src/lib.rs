@@ -366,11 +366,7 @@ impl TransparencyLog {
     /// Get the latest entry for a DID.
     pub fn get_latest_for_did(&self, did: &str) -> Option<LogEntry> {
         let entries = self.entries.read().unwrap();
-        entries
-            .iter()
-            .filter(|e| e.subject_did == did)
-            .last()
-            .cloned()
+        entries.iter().rfind(|e| e.subject_did == did).cloned()
     }
 
     /// Compute the Merkle root hash.
@@ -448,12 +444,16 @@ impl TransparencyLog {
         let mut idx = index;
 
         while level.len() > 1 {
-            let sibling_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
+            let sibling_idx = if idx.is_multiple_of(2) {
+                idx + 1
+            } else {
+                idx - 1
+            };
 
             if sibling_idx < level.len() {
                 path.push(ProofNode {
                     hash: level[sibling_idx].clone(),
-                    position: if idx % 2 == 0 {
+                    position: if idx.is_multiple_of(2) {
                         ProofPosition::Right
                     } else {
                         ProofPosition::Left

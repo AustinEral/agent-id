@@ -5,6 +5,7 @@ members = [
     "crates/aip-handshake",
     "crates/aip-log",
     "crates/aip-resolver",
+    "crates/aip-trust",
     "services/resolver",
     "services/log",
     "cli",

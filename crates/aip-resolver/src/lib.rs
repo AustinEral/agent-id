@@ -77,12 +77,12 @@ impl Resolver {
         let mut docs = self.documents.write().unwrap();
 
         // Check if document exists and new one is newer
-        if let Some(existing) = docs.get(&did) {
-            if document.updated <= existing.updated {
-                return Err(ResolverError::InvalidDocument(
-                    "Document is not newer than existing".to_string(),
-                ));
-            }
+        if let Some(existing) = docs.get(&did)
+            && document.updated <= existing.updated
+        {
+            return Err(ResolverError::InvalidDocument(
+                "Document is not newer than existing".to_string(),
+            ));
         }
 
         docs.insert(did, document);
