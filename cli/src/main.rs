@@ -1,6 +1,6 @@
 //! AIP CLI - Agent Identity Protocol command-line tool.
 
-use aip_core::{Did, RootKey};
+use aip_core::{Did, DidDocument, RootKey};
 use aip_handshake::{
     messages::{Hello, Proof, ProofAccepted},
     protocol::{Verifier, sign_proof, verify_counter_proof},
@@ -33,6 +33,19 @@ enum Commands {
         #[command(subcommand)]
         action: IdentityAction,
     },
+    /// DID Document management
+    Document {
+        #[command(subcommand)]
+        action: DocumentAction,
+    },
+    /// Resolve a DID
+    Resolve {
+        /// The DID to resolve
+        did: String,
+        /// Resolver URL
+        #[arg(short, long, default_value = "http://localhost:8500")]
+        resolver: String,
+    },
     /// Handshake operations
     Handshake {
         #[command(subcommand)]
@@ -52,6 +65,25 @@ enum IdentityAction {
     Show,
     /// Export public identity (safe to share)
     Export,
+}
+
+#[derive(Subcommand)]
+enum DocumentAction {
+    /// Create and sign a DID Document
+    Create {
+        /// Handshake endpoint URL
+        #[arg(short = 'e', long)]
+        endpoint: Option<String>,
+    },
+    /// Publish document to a resolver
+    Publish {
+        /// Resolver URL
+        #[arg(short, long, default_value = "http://localhost:8500")]
+        resolver: String,
+        /// Handshake endpoint URL
+        #[arg(short = 'e', long)]
+        endpoint: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -206,6 +238,97 @@ fn cmd_identity_export(path: PathBuf) -> Result<()> {
 }
 
 // ============================================================================
+// Document Commands
+// ============================================================================
+
+fn cmd_document_create(path: PathBuf, endpoint: Option<String>) -> Result<()> {
+    let (key, _) = load_identity(&path)?;
+
+    let mut doc = DidDocument::new(&key);
+
+    if let Some(ep) = endpoint {
+        doc = doc.with_handshake_endpoint(&ep);
+    }
+
+    let doc = doc.sign(&key)?;
+
+    println!("{}", serde_json::to_string_pretty(&doc)?);
+
+    Ok(())
+}
+
+async fn cmd_document_publish(
+    path: PathBuf,
+    resolver: String,
+    endpoint: Option<String>,
+) -> Result<()> {
+    let (key, did) = load_identity(&path)?;
+
+    let mut doc = DidDocument::new(&key);
+
+    if let Some(ep) = endpoint {
+        doc = doc.with_handshake_endpoint(&ep);
+    }
+
+    let doc = doc.sign(&key)?;
+
+    println!("Publishing DID Document...");
+    println!("  DID: {}", did);
+    println!("  Resolver: {}", resolver);
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(format!("{}/documents", resolver))
+        .json(&doc)
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        let result: serde_json::Value = response.json().await?;
+        println!();
+        println!("✓ Document published!");
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        let error = response.text().await?;
+        anyhow::bail!("Failed to publish: {}", error);
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// Resolve Command
+// ============================================================================
+
+async fn cmd_resolve(did: String, resolver: String) -> Result<()> {
+    println!("Resolving {}...", did);
+
+    let client = reqwest::Client::new();
+    let encoded_did = urlencoding::encode(&did);
+    let response = client
+        .get(format!("{}/documents/{}", resolver, encoded_did))
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        let doc: DidDocument = response.json().await?;
+
+        // Verify the document
+        doc.verify()?;
+        println!("✓ Document signature verified");
+        println!();
+        println!("{}", serde_json::to_string_pretty(&doc)?);
+    } else if response.status() == StatusCode::NOT_FOUND {
+        anyhow::bail!("DID not found in resolver");
+    } else {
+        let error = response.text().await?;
+        anyhow::bail!("Failed to resolve: {}", error);
+    }
+
+    Ok(())
+}
+
+// ============================================================================
 // Handshake Commands
 // ============================================================================
 
@@ -274,7 +397,6 @@ async fn handle_hello(
         .handle_hello(&hello)
         .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    // Store challenge for later verification
     let challenge_hash = aip_handshake::protocol::hash_challenge(&challenge)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -295,7 +417,6 @@ async fn handle_proof(
 ) -> Result<Json<ProofAccepted>, (StatusCode, String)> {
     println!("← Received Proof from {}", proof.responder_did);
 
-    // Find the original challenge
     let challenge = state
         .pending_challenges
         .lock()
@@ -303,7 +424,6 @@ async fn handle_proof(
         .remove(&proof.challenge_hash)
         .ok_or((StatusCode::BAD_REQUEST, "Unknown challenge".to_string()))?;
 
-    // Verify the proof
     state
         .verifier
         .verify_proof(&proof, &challenge)
@@ -311,7 +431,6 @@ async fn handle_proof(
 
     println!("  ✓ Proof verified");
 
-    // Create accepted response with counter-proof
     let accepted = state
         .verifier
         .accept_proof(&proof, &state.key)
@@ -365,7 +484,6 @@ async fn cmd_handshake_connect(path: PathBuf, url: String) -> Result<()> {
 
     let client = reqwest::Client::new();
 
-    // Step 1: Send Hello
     let hello = Hello::new(my_did.to_string());
     println!("1. Sending Hello...");
 
@@ -380,7 +498,6 @@ async fn cmd_handshake_connect(path: PathBuf, url: String) -> Result<()> {
 
     println!("2. Received Challenge from {}", challenge.issuer);
 
-    // Step 2: Sign and send Proof
     let proof = sign_proof(&challenge, &my_did, &my_key, Some(challenge.issuer.clone()))?;
     println!("3. Sending Proof...");
 
@@ -398,7 +515,6 @@ async fn cmd_handshake_connect(path: PathBuf, url: String) -> Result<()> {
         accepted.session_id
     );
 
-    // Step 3: Verify counter-proof
     verify_counter_proof(
         &accepted.counter_proof,
         proof.counter_challenge.as_ref().unwrap(),
@@ -426,6 +542,13 @@ async fn main() -> Result<()> {
             IdentityAction::Show => cmd_identity_show(identity_path),
             IdentityAction::Export => cmd_identity_export(identity_path),
         },
+        Commands::Document { action } => match action {
+            DocumentAction::Create { endpoint } => cmd_document_create(identity_path, endpoint),
+            DocumentAction::Publish { resolver, endpoint } => {
+                cmd_document_publish(identity_path, resolver, endpoint).await
+            }
+        },
+        Commands::Resolve { did, resolver } => cmd_resolve(did, resolver).await,
         Commands::Handshake { action } => match action {
             HandshakeAction::Test => cmd_handshake_test(identity_path),
             HandshakeAction::Serve { port } => cmd_handshake_serve(identity_path, port).await,
