@@ -22,7 +22,7 @@ The `max_age_ms` field is stored but never read. Nonces accumulate forever.
 
 **Impact:** Memory grows unbounded in long-running verifiers.
 
-**Fix needed:** Implement expiry using the existing field, or use a time-bounded cache.
+**Status:** Deferred. For CLI/short-lived use, not a concern. Timestamp validation is primary defense. Revisit if deploying as long-running service.
 
 ---
 
