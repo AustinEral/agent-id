@@ -2,13 +2,16 @@
 
 use aip_core::{Did, RootKey};
 use aip_handshake::{
-    messages::Hello,
-    protocol::{Verifier, sign_proof},
+    messages::{Hello, Proof, ProofAccepted},
+    protocol::{Verifier, sign_proof, verify_counter_proof},
 };
 use anyhow::{Context, Result};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// Agent Identity Protocol CLI
 #[derive(Parser)]
@@ -30,7 +33,7 @@ enum Commands {
         #[command(subcommand)]
         action: IdentityAction,
     },
-    /// Handshake testing
+    /// Handshake operations
     Handshake {
         #[command(subcommand)]
         action: HandshakeAction,
@@ -55,11 +58,16 @@ enum IdentityAction {
 enum HandshakeAction {
     /// Simulate a local handshake between two identities
     Test,
-    /// Act as handshake server (listen for connections)
+    /// Start handshake server
     Serve {
         /// Port to listen on
         #[arg(short, long, default_value = "8400")]
         port: u16,
+    },
+    /// Connect to a remote agent and perform handshake
+    Connect {
+        /// URL of the remote agent (e.g., http://localhost:8400)
+        url: String,
     },
 }
 
@@ -118,7 +126,6 @@ fn load_identity(path: &PathBuf) -> Result<(RootKey, Did)> {
     let root_key = RootKey::from_bytes(&stored.secret_key)?;
     let did = root_key.did();
 
-    // Verify DID matches
     if did.to_string() != stored.did {
         anyhow::bail!("Identity file corrupted: DID mismatch");
     }
@@ -135,14 +142,12 @@ fn save_identity(path: &PathBuf, root_key: &RootKey) -> Result<()> {
 
     let contents = serde_json::to_string_pretty(&stored)?;
 
-    // Create parent directory if needed
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
 
     std::fs::write(path, contents)?;
 
-    // Set restrictive permissions on Unix
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -151,6 +156,10 @@ fn save_identity(path: &PathBuf, root_key: &RootKey) -> Result<()> {
 
     Ok(())
 }
+
+// ============================================================================
+// Identity Commands
+// ============================================================================
 
 fn cmd_identity_generate(path: PathBuf, force: bool) -> Result<()> {
     if path.exists() && !force {
@@ -186,7 +195,6 @@ fn cmd_identity_show(path: PathBuf) -> Result<()> {
 fn cmd_identity_export(path: PathBuf) -> Result<()> {
     let (_, did) = load_identity(&path)?;
 
-    // Export only public information
     let export = serde_json::json!({
         "did": did.to_string(),
         "publicKey": did.key_id(),
@@ -197,11 +205,12 @@ fn cmd_identity_export(path: PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn cmd_handshake_test(path: PathBuf) -> Result<()> {
-    // Load our identity
-    let (my_key, my_did) = load_identity(&path)?;
+// ============================================================================
+// Handshake Commands
+// ============================================================================
 
-    // Create a temporary peer for testing
+fn cmd_handshake_test(path: PathBuf) -> Result<()> {
+    let (my_key, my_did) = load_identity(&path)?;
     let peer_key = RootKey::generate();
     let peer_did = peer_key.did();
 
@@ -210,11 +219,9 @@ fn cmd_handshake_test(path: PathBuf) -> Result<()> {
     println!("  Peer DID: {}", peer_did);
     println!();
 
-    // Step 1: We send Hello
     let hello = Hello::new(my_did.to_string());
     println!("1. Sent Hello");
 
-    // Step 2: Peer sends Challenge
     let verifier = Verifier::new(peer_did.clone());
     let challenge = verifier.handle_hello(&hello)?;
     println!(
@@ -222,11 +229,9 @@ fn cmd_handshake_test(path: PathBuf) -> Result<()> {
         &challenge.nonce[..16]
     );
 
-    // Step 3: We send Proof
     let proof = sign_proof(&challenge, &my_did, &my_key, Some(peer_did.to_string()))?;
     println!("3. Sent Proof (sig: {}...)", &proof.signature[..16]);
 
-    // Step 4: Peer verifies and accepts
     verifier.verify_proof(&proof, &challenge)?;
     let accepted = verifier.accept_proof(&proof, &peer_key)?;
     println!(
@@ -234,8 +239,7 @@ fn cmd_handshake_test(path: PathBuf) -> Result<()> {
         accepted.session_id
     );
 
-    // Step 5: We verify counter-proof
-    aip_handshake::verify_counter_proof(
+    verify_counter_proof(
         &accepted.counter_proof,
         proof.counter_challenge.as_ref().unwrap(),
     )?;
@@ -247,15 +251,173 @@ fn cmd_handshake_test(path: PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn cmd_handshake_serve(_path: PathBuf, port: u16) -> Result<()> {
-    println!("Handshake server not yet implemented.");
-    println!("Would listen on port {}", port);
+// ============================================================================
+// HTTP Server
+// ============================================================================
+
+#[allow(dead_code)]
+struct ServerState {
+    key: RootKey,
+    did: Did,
+    verifier: Verifier,
+    pending_challenges: Mutex<std::collections::HashMap<String, aip_handshake::Challenge>>,
+}
+
+async fn handle_hello(
+    State(state): State<Arc<ServerState>>,
+    Json(hello): Json<Hello>,
+) -> Result<Json<aip_handshake::Challenge>, (StatusCode, String)> {
+    println!("← Received Hello from {}", hello.did);
+
+    let challenge = state
+        .verifier
+        .handle_hello(&hello)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    // Store challenge for later verification
+    let challenge_hash = aip_handshake::protocol::hash_challenge(&challenge)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    state
+        .pending_challenges
+        .lock()
+        .await
+        .insert(challenge_hash, challenge.clone());
+
+    println!("→ Sent Challenge");
+
+    Ok(Json(challenge))
+}
+
+async fn handle_proof(
+    State(state): State<Arc<ServerState>>,
+    Json(proof): Json<Proof>,
+) -> Result<Json<ProofAccepted>, (StatusCode, String)> {
+    println!("← Received Proof from {}", proof.responder_did);
+
+    // Find the original challenge
+    let challenge = state
+        .pending_challenges
+        .lock()
+        .await
+        .remove(&proof.challenge_hash)
+        .ok_or((StatusCode::BAD_REQUEST, "Unknown challenge".to_string()))?;
+
+    // Verify the proof
+    state
+        .verifier
+        .verify_proof(&proof, &challenge)
+        .map_err(|e| (StatusCode::UNAUTHORIZED, e.to_string()))?;
+
+    println!("  ✓ Proof verified");
+
+    // Create accepted response with counter-proof
+    let accepted = state
+        .verifier
+        .accept_proof(&proof, &state.key)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    println!("→ Sent ProofAccepted (session: {})", accepted.session_id);
+
+    Ok(Json(accepted))
+}
+
+async fn cmd_handshake_serve(path: PathBuf, port: u16) -> Result<()> {
+    let (key, did) = load_identity(&path)?;
+
+    println!("Starting handshake server...");
+    println!("  DID: {}", did);
+    println!("  Listening on: http://0.0.0.0:{}", port);
+    println!();
+
+    let state = Arc::new(ServerState {
+        verifier: Verifier::new(did.clone()),
+        key,
+        did,
+        pending_challenges: Mutex::new(std::collections::HashMap::new()),
+    });
+
+    let app = Router::new()
+        .route("/hello", post(handle_hello))
+        .route("/proof", post(handle_proof))
+        .with_state(state);
+
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
+
+    println!("Server ready. Waiting for connections...");
+    println!();
+
+    axum::serve(listener, app).await?;
+
     Ok(())
 }
 
-fn main() -> Result<()> {
-    let cli = Cli::parse();
+// ============================================================================
+// HTTP Client
+// ============================================================================
 
+async fn cmd_handshake_connect(path: PathBuf, url: String) -> Result<()> {
+    let (my_key, my_did) = load_identity(&path)?;
+
+    println!("Connecting to {}...", url);
+    println!("  Our DID: {}", my_did);
+    println!();
+
+    let client = reqwest::Client::new();
+
+    // Step 1: Send Hello
+    let hello = Hello::new(my_did.to_string());
+    println!("1. Sending Hello...");
+
+    let challenge: aip_handshake::Challenge = client
+        .post(format!("{}/hello", url))
+        .json(&hello)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    println!("2. Received Challenge from {}", challenge.issuer);
+
+    // Step 2: Sign and send Proof
+    let proof = sign_proof(&challenge, &my_did, &my_key, Some(challenge.issuer.clone()))?;
+    println!("3. Sending Proof...");
+
+    let accepted: ProofAccepted = client
+        .post(format!("{}/proof", url))
+        .json(&proof)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    println!(
+        "4. Received ProofAccepted (session: {})",
+        accepted.session_id
+    );
+
+    // Step 3: Verify counter-proof
+    verify_counter_proof(
+        &accepted.counter_proof,
+        proof.counter_challenge.as_ref().unwrap(),
+    )?;
+    println!("5. Verified counter-proof");
+
+    println!();
+    println!("✓ Handshake successful with {}!", challenge.issuer);
+
+    Ok(())
+}
+
+// ============================================================================
+// Main
+// ============================================================================
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let cli = Cli::parse();
     let identity_path = get_identity_path(cli.identity)?;
 
     match cli.command {
@@ -266,7 +428,8 @@ fn main() -> Result<()> {
         },
         Commands::Handshake { action } => match action {
             HandshakeAction::Test => cmd_handshake_test(identity_path),
-            HandshakeAction::Serve { port } => cmd_handshake_serve(identity_path, port),
+            HandshakeAction::Serve { port } => cmd_handshake_serve(identity_path, port).await,
+            HandshakeAction::Connect { url } => cmd_handshake_connect(identity_path, url).await,
         },
     }
 }
