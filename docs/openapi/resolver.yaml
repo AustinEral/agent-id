@@ -16,15 +16,15 @@ servers:
     description: Public resolver (future)
 
 tags:
-  - name: Resolution
-    description: DID resolution endpoints
-  - name: Registration
-    description: DID Document registration
+  - name: Health
+    description: Service health
+  - name: Documents
+    description: DID Document operations
 
 paths:
   /health:
     get:
-      tags: [Resolution]
+      tags: [Health]
       summary: Health check
       operationId: health
       responses:
@@ -42,38 +42,24 @@ paths:
                     type: string
                     example: resolver
 
-  /did/{did}:
+  /documents:
     get:
-      tags: [Resolution]
-      summary: Resolve a DID to its DID Document
-      operationId: resolve
-      parameters:
-        - name: did
-          in: path
-          required: true
-          description: The DID to resolve
-          schema:
-            type: string
-            example: did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+      tags: [Documents]
+      summary: List all registered documents
+      operationId: listDocuments
       responses:
         '200':
-          description: DID Document
+          description: List of DID Documents
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DidDocument'
-        '404':
-          description: DID not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /did:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DidDocument'
     post:
-      tags: [Registration]
-      summary: Register or update a DID Document
-      operationId: register
+      tags: [Documents]
+      summary: Register a new DID Document
+      operationId: registerDocument
       requestBody:
         required: true
         content:
@@ -95,6 +81,70 @@ paths:
                     type: string
         '400':
           description: Invalid document or signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /documents/{did}:
+    get:
+      tags: [Documents]
+      summary: Resolve a DID to its DID Document
+      operationId: resolveDocument
+      parameters:
+        - name: did
+          in: path
+          required: true
+          description: The DID to resolve (URL-encoded)
+          schema:
+            type: string
+            example: did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+      responses:
+        '200':
+          description: DID Document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DidDocument'
+        '404':
+          description: DID not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /documents/update:
+    post:
+      tags: [Documents]
+      summary: Update an existing DID Document
+      operationId: updateDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DidDocument'
+      responses:
+        '200':
+          description: Document updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: updated
+                  did:
+                    type: string
+        '400':
+          description: Invalid document, signature, or not newer than existing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Document not found
           content:
             application/json:
               schema:

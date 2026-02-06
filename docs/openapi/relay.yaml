@@ -166,7 +166,7 @@ paths:
         - name: issuer
           in: path
           required: true
-          description: Issuer DID
+          description: Issuer DID (URL-encoded)
           schema:
             type: string
       responses:
@@ -258,7 +258,7 @@ components:
 
     TrustStatement:
       type: object
-      required: [type, version, id, issuer, subject, timestamp, assessment, signature]
+      required: [type, version, id, issuer, subject, timestamp, assessment]
       properties:
         type:
           type: string
@@ -281,32 +281,64 @@ components:
           format: date-time
         assessment:
           $ref: '#/components/schemas/TrustAssessment'
+        previousStatement:
+          type: string
+          description: ID of previous statement if this is an update
         signature:
-          $ref: '#/components/schemas/Signature'
+          $ref: '#/components/schemas/StatementSignature'
 
     TrustAssessment:
       type: object
+      required: [overallTrust]
       properties:
         overallTrust:
           type: number
           minimum: 0
           maximum: 1
           description: Overall trust score (0.0 to 1.0)
+        domains:
+          $ref: '#/components/schemas/DomainTrust'
         tags:
           type: array
           items:
             type: string
           description: Descriptive tags
-        domains:
-          type: object
-          description: Domain-specific trust scores
         interactionSummary:
-          type: object
-          description: Summary of interactions
+          $ref: '#/components/schemas/InteractionSummary'
+        notesHash:
+          type: string
+          description: Hash of private notes (not shared)
+
+    DomainTrust:
+      type: object
+      properties:
+        technical:
+          type: number
+          minimum: 0
+          maximum: 1
+        social:
+          type: number
+          minimum: 0
+          maximum: 1
+        financial:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    InteractionSummary:
+      type: object
+      properties:
+        totalInteractions:
+          type: integer
+        positiveInteractions:
+          type: integer
+        lastInteraction:
+          type: string
+          format: date-time
 
     BlockStatement:
       type: object
-      required: [type, version, id, issuer, subject, reason, severity, signature]
+      required: [type, version, id, issuer, subject, reason, severity]
       properties:
         type:
           type: string
@@ -320,20 +352,24 @@ components:
           type: string
         subject:
           type: string
+        timestamp:
+          type: string
+          format: date-time
         reason:
           type: string
           description: Reason for blocking
         severity:
           type: string
           enum: [temporary, permanent, report]
-        timestamp:
+        evidenceHash:
           type: string
-          format: date-time
+          description: Hash of evidence (optional)
         signature:
-          $ref: '#/components/schemas/Signature'
+          $ref: '#/components/schemas/StatementSignature'
 
-    Signature:
+    StatementSignature:
       type: object
+      required: [key, sig]
       properties:
         key:
           type: string
@@ -341,9 +377,6 @@ components:
         sig:
           type: string
           description: Base64-encoded signature
-        signedAt:
-          type: integer
-          description: Unix timestamp (ms) when signed
 
     GraphResponse:
       type: object

@@ -16,8 +16,8 @@ servers:
     description: Public log (future)
 
 tags:
-  - name: Info
-    description: Log information
+  - name: Health
+    description: Service health
   - name: Entries
     description: Log entry operations
   - name: Proofs
@@ -26,7 +26,7 @@ tags:
 paths:
   /health:
     get:
-      tags: [Info]
+      tags: [Health]
       summary: Health check
       operationId: health
       responses:
@@ -44,20 +44,58 @@ paths:
                     type: string
                     example: log
 
-  /log/info:
+  /status:
     get:
-      tags: [Info]
-      summary: Get log information
-      operationId: info
+      tags: [Health]
+      summary: Get log status and statistics
+      operationId: getStatus
       responses:
         '200':
-          description: Log information
+          description: Log status
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LogInfo'
+                $ref: '#/components/schemas/LogStatus'
 
-  /log/entry/{sequence}:
+  /entries:
+    get:
+      tags: [Entries]
+      summary: Get all log entries
+      operationId: getEntries
+      responses:
+        '200':
+          description: List of log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogEntry'
+    post:
+      tags: [Entries]
+      summary: Append a new entry to the log
+      operationId: appendEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewLogEntry'
+      responses:
+        '201':
+          description: Entry appended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogEntry'
+        '400':
+          description: Invalid entry or signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entries/{sequence}:
     get:
       tags: [Entries]
       summary: Get a log entry by sequence number
@@ -84,58 +122,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /log/did/{did}:
-    get:
-      tags: [Entries]
-      summary: Get all entries for a DID
-      operationId: getByDid
-      parameters:
-        - name: did
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of log entries
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/LogEntry'
-
-  /log/entry:
-    post:
-      tags: [Entries]
-      summary: Append a new entry to the log
-      operationId: appendEntry
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NewLogEntry'
-      responses:
-        '201':
-          description: Entry appended
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  sequence:
-                    type: integer
-                  entryHash:
-                    type: string
-        '400':
-          description: Invalid entry or signature
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /log/proof/{sequence}:
+  /entries/{sequence}/proof:
     get:
       tags: [Proofs]
       summary: Get inclusion proof for an entry
@@ -160,6 +147,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /verify:
+    post:
+      tags: [Proofs]
+      summary: Verify an inclusion proof
+      operationId: verifyProof
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  error:
+                    type: string
+                    description: Error message if invalid
+
 components:
   schemas:
     ErrorResponse:
@@ -168,7 +180,7 @@ components:
         error:
           type: string
 
-    LogInfo:
+    LogStatus:
       type: object
       properties:
         size:
@@ -252,3 +264,13 @@ components:
         position:
           type: string
           enum: [left, right]
+
+    VerifyRequest:
+      type: object
+      required: [proof, entryHash]
+      properties:
+        proof:
+          $ref: '#/components/schemas/InclusionProof'
+        entryHash:
+          type: string
+          description: Hash of the entry to verify
