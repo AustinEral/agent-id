@@ -5,16 +5,19 @@
 //! This crate provides:
 //! - Ed25519 key generation and management
 //! - DID creation and parsing
+//! - DID Document structure and signing
 //! - JCS canonicalization and signing
 //! - Delegation tokens
 
 pub mod delegation;
 pub mod did;
+pub mod document;
 pub mod error;
 pub mod keys;
 pub mod signing;
 
 pub use did::Did;
+pub use document::DidDocument;
 pub use error::Error;
 pub use keys::{RootKey, SessionKey};
 

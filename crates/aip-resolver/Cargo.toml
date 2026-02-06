@@ -7,7 +7,4 @@ license.workspace = true
 
 [dependencies]
 aip-core = { path = "../aip-core" }
-serde.workspace = true
-serde_json.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
