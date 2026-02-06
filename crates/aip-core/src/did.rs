@@ -38,8 +38,7 @@ impl Did {
 
     /// Get the public key.
     pub fn public_key(&self) -> Result<VerifyingKey> {
-        VerifyingKey::from_bytes(&self.public_key)
-            .map_err(|e| Error::InvalidDid(e.to_string()))
+        VerifyingKey::from_bytes(&self.public_key).map_err(|e| Error::InvalidDid(e.to_string()))
     }
 
     /// Get the base58-encoded public key portion.
@@ -112,10 +111,10 @@ mod tests {
     fn test_did_roundtrip() {
         let signing_key = SigningKey::generate(&mut OsRng);
         let did = Did::new(signing_key.verifying_key());
-        
+
         let did_str = did.to_string();
         assert!(did_str.starts_with("did:aip:1:"));
-        
+
         let parsed: Did = did_str.parse().unwrap();
         assert_eq!(did, parsed);
     }

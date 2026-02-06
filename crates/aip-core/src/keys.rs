@@ -1,7 +1,7 @@
 //! Key management for AIP identities.
 
 use crate::{Did, Error, Result};
-use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 
 /// A root identity key.
@@ -111,7 +111,7 @@ mod tests {
         let root = RootKey::generate();
         let message = b"hello world";
         let signature = root.sign(message);
-        
+
         verify(&root.verifying_key(), message, &signature).unwrap();
     }
 
@@ -119,9 +119,9 @@ mod tests {
     fn test_session_key() {
         let root = RootKey::generate();
         let session = SessionKey::generate(root.did());
-        
+
         assert_eq!(session.root_did(), &root.did());
-        
+
         let message = b"session message";
         let sig = session.sign(message);
         verify(&session.verifying_key(), message, &sig).unwrap();

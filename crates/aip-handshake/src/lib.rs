@@ -2,8 +2,8 @@
 //!
 //! Implements the challenge-response flow defined in the AIP spec.
 
+pub mod error;
 pub mod messages;
 pub mod protocol;
-pub mod error;
 
 // TODO: Implement handshake protocol

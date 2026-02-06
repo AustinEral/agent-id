@@ -2,7 +2,7 @@
 
 use crate::Result;
 use serde::Serialize;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 /// Canonicalize a JSON value using JCS (RFC 8785).
 ///
