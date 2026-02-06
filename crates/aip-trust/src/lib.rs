@@ -410,7 +410,7 @@ impl TrustGraph {
 
     /// Calculate derived trust (through trusted intermediaries).
     /// Simple algorithm: trust(A,C) = max over B of (trust(A,B) * trust(B,C) * decay)
-    pub fn derived_trust(&self, did: &str, intermediaries: &HashMap<String, f64>) -> f64 {
+    pub fn derived_trust(&self, _target_did: &str, intermediaries: &HashMap<String, f64>) -> f64 {
         const DECAY: f64 = 0.7;
 
         let mut max_trust = 0.0;
