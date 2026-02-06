@@ -6,6 +6,7 @@ use aip_core::{signing, Did, RootKey};
 use chrono::Utc;
 use std::collections::HashSet;
 use std::sync::Mutex;
+use subtle::ConstantTimeEq;
 
 /// Default timestamp tolerance (±5 minutes).
 pub const DEFAULT_TIMESTAMP_TOLERANCE_MS: i64 = 5 * 60 * 1000;
@@ -86,7 +87,8 @@ impl Verifier {
     pub fn verify_proof(&self, proof: &Proof, original_challenge: &Challenge) -> Result<()> {
         // Verify this proof is for our challenge
         let expected_hash = hash_challenge(original_challenge)?;
-        if proof.challenge_hash != expected_hash {
+        // SECURITY: Use constant-time comparison to prevent timing attacks
+        if proof.challenge_hash.as_bytes().ct_eq(expected_hash.as_bytes()).unwrap_u8() != 1 {
             return Err(HandshakeError::InvalidSignature);
         }
 
@@ -231,7 +233,8 @@ pub fn verify_counter_proof(
 ) -> Result<()> {
     // Verify hash matches
     let expected_hash = hash_counter_challenge(original_counter_challenge)?;
-    if counter_proof.challenge_hash != expected_hash {
+    // SECURITY: Use constant-time comparison to prevent timing attacks
+    if counter_proof.challenge_hash.as_bytes().ct_eq(expected_hash.as_bytes()).unwrap_u8() != 1 {
         return Err(HandshakeError::InvalidSignature);
     }
 
