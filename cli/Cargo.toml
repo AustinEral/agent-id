@@ -1,0 +1,22 @@
+[package]
+name = "aip-cli"
+description = "CLI for the Agent Identity Protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "aip"
+path = "src/main.rs"
+
+[dependencies]
+aip-core = { path = "../crates/aip-core" }
+aip-handshake = { path = "../crates/aip-handshake" }
+clap = { version = "4", features = ["derive"] }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+hex.workspace = true
+directories = "5"
