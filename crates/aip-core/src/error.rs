@@ -27,4 +27,16 @@ pub enum Error {
 
     #[error("Invalid delegation chain")]
     InvalidDelegationChain,
+
+    #[error("Validation error: {0}")]
+    Validation(String),
+
+    #[error("Key revoked")]
+    KeyRevoked,
+
+    #[error("Recovery pending")]
+    RecoveryPending,
+
+    #[error("Recovery cancelled")]
+    RecoveryCancelled,
 }

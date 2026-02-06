@@ -3,7 +3,7 @@
 //! Provides an append-only log of identity events with Merkle tree verification.
 //! This enables detection of key compromise and prevents silent key rotation.
 
-use aip_core::{Did, DidDocument, Error as CoreError, RootKey, signing};
+use aip_core::{Did, DidDocument, Error as CoreError, RootKey, signing, KeyRotation, Revocation, RootRecovery, RecoveryCancellation};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -44,6 +44,10 @@ pub enum EventType {
     KeyRotation,
     /// Key revocation
     KeyRevocation,
+    /// Root recovery initiated
+    RootRecovery,
+    /// Recovery cancelled
+    RecoveryCancelled,
 }
 
 /// A log entry representing an identity event.
@@ -508,6 +512,92 @@ pub fn create_document_entry(
         previous_hash,
     );
 
+    entry.sign(subject_key)
+}
+
+
+/// Helper to create a key rotation log entry.
+pub fn create_rotation_entry(
+    rotation: &KeyRotation,
+    subject_key: &RootKey,
+    previous_hash: String,
+    sequence: u64,
+) -> Result<LogEntry> {
+    let entry = LogEntry::new(
+        sequence,
+        EventType::KeyRotation,
+        rotation.did.clone(),
+        serde_json::to_value(rotation)?,
+        previous_hash,
+    );
+    entry.sign(subject_key)
+}
+
+/// Helper to create a key revocation log entry.
+pub fn create_revocation_entry(
+    revocation: &Revocation,
+    subject_key: &RootKey,
+    previous_hash: String,
+    sequence: u64,
+) -> Result<LogEntry> {
+    let entry = LogEntry::new(
+        sequence,
+        EventType::KeyRevocation,
+        revocation.did.clone(),
+        serde_json::to_value(revocation)?,
+        previous_hash,
+    );
+    entry.sign(subject_key)
+}
+
+/// Helper to create a root recovery log entry.
+pub fn create_recovery_entry(
+    recovery: &RootRecovery,
+    recovery_key: &RootKey,
+    previous_hash: String,
+    sequence: u64,
+) -> Result<LogEntry> {
+    let entry = LogEntry::new(
+        sequence,
+        EventType::RootRecovery,
+        recovery.did.clone(),
+        serde_json::to_value(recovery)?,
+        previous_hash,
+    );
+    entry.sign(recovery_key)
+}
+
+/// Helper to create a recovery cancellation log entry.
+pub fn create_cancellation_entry(
+    cancellation: &RecoveryCancellation,
+    root_key: &RootKey,
+    previous_hash: String,
+    sequence: u64,
+) -> Result<LogEntry> {
+    let entry = LogEntry::new(
+        sequence,
+        EventType::RecoveryCancelled,
+        cancellation.did.clone(),
+        serde_json::to_value(cancellation)?,
+        previous_hash,
+    );
+    entry.sign(root_key)
+}
+
+/// Helper to create an identity creation log entry.
+pub fn create_identity_entry(
+    did: &Did,
+    subject_key: &RootKey,
+    previous_hash: String,
+    sequence: u64,
+) -> Result<LogEntry> {
+    let entry = LogEntry::new(
+        sequence,
+        EventType::IdentityCreated,
+        did.to_string(),
+        serde_json::json!({"created": true}),
+        previous_hash,
+    );
     entry.sign(subject_key)
 }
 
