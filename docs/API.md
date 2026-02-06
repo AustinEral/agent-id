@@ -405,3 +405,18 @@ Services are configured via environment variables:
 | `LOG_URL` | Resolver | — | Transparency log URL |
 | `OPERATOR_KEY_PATH` | Log | — | Path to operator key file |
 | `MAX_STATEMENTS_PER_IDENTITY` | Relay | 1000 | Rate limit per issuer |
+
+---
+
+## OpenAPI Specifications
+
+Machine-readable API specifications are available in OpenAPI 3.1 format:
+
+- [Resolver API](openapi/resolver.yaml)
+- [Transparency Log API](openapi/log.yaml)
+- [Trust Relay API](openapi/relay.yaml)
+
+These can be used with tools like:
+- [Swagger UI](https://swagger.io/tools/swagger-ui/) — Interactive documentation
+- [OpenAPI Generator](https://openapi-generator.tech/) — Client SDK generation
+- [Prism](https://stoplight.io/open-source/prism) — Mock server

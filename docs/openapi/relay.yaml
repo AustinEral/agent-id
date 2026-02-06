@@ -1,0 +1,378 @@
+openapi: 3.1.0
+info:
+  title: AIP Trust Relay
+  version: 0.1.0
+  description: |
+    Trust statement relay service for the Agent Identity Protocol.
+    
+    Allows agents to publish and query trust statements, block statements,
+    and explore trust graphs.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8082
+    description: Local development
+  - url: https://relay.aip.network
+    description: Public relay (future)
+
+tags:
+  - name: Health
+    description: Service health endpoints
+  - name: Trust Statements
+    description: Publish and query trust statements
+  - name: Block Statements
+    description: Publish and query block statements
+  - name: Trust Graph
+    description: Explore trust relationships
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: trust-relay
+
+  /stats:
+    get:
+      tags: [Health]
+      summary: Get relay statistics
+      operationId: stats
+      responses:
+        '200':
+          description: Relay statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+
+  /trust/statements:
+    get:
+      tags: [Trust Statements]
+      summary: Query trust statements
+      operationId: queryStatements
+      parameters:
+        - name: issuer
+          in: query
+          description: Filter by issuer DID
+          schema:
+            type: string
+            example: did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+        - name: subject
+          in: query
+          description: Filter by subject DID
+          schema:
+            type: string
+            example: did:aip:1:8Xhf3IkrF9wOrKZqWgZyLeNX4oDtC0bS7aMnQxYzRdUu
+      responses:
+        '200':
+          description: List of matching trust statements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrustStatement'
+        '400':
+          description: Must specify issuer or subject
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Trust Statements]
+      summary: Submit a trust statement
+      operationId: submitStatement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustStatement'
+      responses:
+        '201':
+          description: Statement accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: accepted
+        '400':
+          description: Invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /trust/blocks:
+    post:
+      tags: [Block Statements]
+      summary: Submit a block statement
+      operationId: submitBlock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockStatement'
+      responses:
+        '201':
+          description: Block statement accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: accepted
+        '400':
+          description: Invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /trust/blocks/{issuer}:
+    get:
+      tags: [Block Statements]
+      summary: Get blocks issued by a DID
+      operationId: queryBlocks
+      parameters:
+        - name: issuer
+          in: path
+          required: true
+          description: Issuer DID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of block statements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlockStatement'
+
+  /trust/blocked/{issuer}/{subject}:
+    get:
+      tags: [Block Statements]
+      summary: Check if subject is blocked by issuer
+      operationId: checkBlocked
+      parameters:
+        - name: issuer
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: subject
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  blocked:
+                    type: boolean
+
+  /trust/graph:
+    get:
+      tags: [Trust Graph]
+      summary: Get trust graph centered on a DID
+      operationId: getGraph
+      parameters:
+        - name: center
+          in: query
+          required: true
+          description: DID to center the graph on
+          schema:
+            type: string
+        - name: depth
+          in: query
+          description: How many hops to traverse (default 2, max 5)
+          schema:
+            type: integer
+            default: 2
+            minimum: 1
+            maximum: 5
+      responses:
+        '200':
+          description: Trust graph
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphResponse'
+
+components:
+  schemas:
+    StatsResponse:
+      type: object
+      properties:
+        total_statements:
+          type: integer
+          description: Total trust statements in relay
+        total_blocks:
+          type: integer
+          description: Total block statements in relay
+        unique_issuers:
+          type: integer
+          description: Number of unique issuing DIDs
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    TrustStatement:
+      type: object
+      required: [type, version, id, issuer, subject, timestamp, assessment, signature]
+      properties:
+        type:
+          type: string
+          const: TrustStatement
+        version:
+          type: string
+          example: "1.0"
+        id:
+          type: string
+          format: uuid
+        issuer:
+          type: string
+          description: DID of the issuer
+          example: did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+        subject:
+          type: string
+          description: DID of the subject
+        timestamp:
+          type: string
+          format: date-time
+        assessment:
+          $ref: '#/components/schemas/TrustAssessment'
+        signature:
+          $ref: '#/components/schemas/Signature'
+
+    TrustAssessment:
+      type: object
+      properties:
+        overallTrust:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Overall trust score (0.0 to 1.0)
+        tags:
+          type: array
+          items:
+            type: string
+          description: Descriptive tags
+        domains:
+          type: object
+          description: Domain-specific trust scores
+        interactionSummary:
+          type: object
+          description: Summary of interactions
+
+    BlockStatement:
+      type: object
+      required: [type, version, id, issuer, subject, reason, severity, signature]
+      properties:
+        type:
+          type: string
+          const: BlockStatement
+        version:
+          type: string
+        id:
+          type: string
+          format: uuid
+        issuer:
+          type: string
+        subject:
+          type: string
+        reason:
+          type: string
+          description: Reason for blocking
+        severity:
+          type: string
+          enum: [temporary, permanent, report]
+        timestamp:
+          type: string
+          format: date-time
+        signature:
+          $ref: '#/components/schemas/Signature'
+
+    Signature:
+      type: object
+      properties:
+        key:
+          type: string
+          description: Key ID used to sign
+        sig:
+          type: string
+          description: Base64-encoded signature
+        signedAt:
+          type: integer
+          description: Unix timestamp (ms) when signed
+
+    GraphResponse:
+      type: object
+      properties:
+        center:
+          type: string
+          description: DID the graph is centered on
+        depth:
+          type: integer
+          description: Depth of traversal
+        nodes:
+          type: array
+          items:
+            type: string
+          description: All DIDs in the graph
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+
+    GraphEdge:
+      type: object
+      properties:
+        issuer:
+          type: string
+        subject:
+          type: string
+        trustScore:
+          type: number
+        timestamp:
+          type: integer
+          description: Unix timestamp (ms)

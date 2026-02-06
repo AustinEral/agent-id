@@ -1,0 +1,194 @@
+openapi: 3.1.0
+info:
+  title: AIP DID Resolver
+  version: 0.1.0
+  description: |
+    DID Document resolution service for the Agent Identity Protocol.
+    
+    Resolves DIDs to DID Documents and accepts document registrations.
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://resolver.aip.network
+    description: Public resolver (future)
+
+tags:
+  - name: Resolution
+    description: DID resolution endpoints
+  - name: Registration
+    description: DID Document registration
+
+paths:
+  /health:
+    get:
+      tags: [Resolution]
+      summary: Health check
+      operationId: health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: resolver
+
+  /did/{did}:
+    get:
+      tags: [Resolution]
+      summary: Resolve a DID to its DID Document
+      operationId: resolve
+      parameters:
+        - name: did
+          in: path
+          required: true
+          description: The DID to resolve
+          schema:
+            type: string
+            example: did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+      responses:
+        '200':
+          description: DID Document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DidDocument'
+        '404':
+          description: DID not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /did:
+    post:
+      tags: [Registration]
+      summary: Register or update a DID Document
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DidDocument'
+      responses:
+        '201':
+          description: Document registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: registered
+                  did:
+                    type: string
+        '400':
+          description: Invalid document or signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+
+    DidDocument:
+      type: object
+      required: [id, verificationMethod]
+      properties:
+        id:
+          type: string
+          description: The DID
+          example: did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+        controller:
+          type: string
+          description: Controller DID (defaults to id)
+        verificationMethod:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerificationMethod'
+        authentication:
+          type: array
+          items:
+            type: string
+          description: Key IDs for authentication
+        assertionMethod:
+          type: array
+          items:
+            type: string
+          description: Key IDs for assertions
+        service:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+        proof:
+          $ref: '#/components/schemas/DocumentProof'
+
+    VerificationMethod:
+      type: object
+      required: [id, type, controller, publicKeyMultibase]
+      properties:
+        id:
+          type: string
+          example: did:aip:1:7Tqg2...#root
+        type:
+          type: string
+          example: Ed25519VerificationKey2020
+        controller:
+          type: string
+        publicKeyMultibase:
+          type: string
+          description: Multibase-encoded public key
+
+    Service:
+      type: object
+      required: [id, type, serviceEndpoint]
+      properties:
+        id:
+          type: string
+          example: did:aip:1:7Tqg2...#handshake
+        type:
+          type: string
+          example: AIPHandshake
+        serviceEndpoint:
+          type: string
+          format: uri
+          example: https://agent.example/aip/handshake
+
+    DocumentProof:
+      type: object
+      properties:
+        type:
+          type: string
+          example: Ed25519Signature2020
+        created:
+          type: string
+          format: date-time
+        verificationMethod:
+          type: string
+          description: Key ID used to sign
+        proofValue:
+          type: string
+          description: Base64-encoded signature
