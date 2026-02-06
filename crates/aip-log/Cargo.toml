@@ -1,6 +1,6 @@
 [package]
 name = "aip-log"
-description = "Transparency log client for the Agent Identity Protocol"
+description = "Transparency log for the Agent Identity Protocol"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,4 +10,8 @@ aip-core = { path = "../aip-core" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+chrono.workspace = true
+sha2.workspace = true
+base64.workspace = true
+ed25519-dalek.workspace = true
+hex.workspace = true
