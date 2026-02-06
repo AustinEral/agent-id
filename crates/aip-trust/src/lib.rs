@@ -8,7 +8,7 @@
 //! - Block statements
 //! - Local trust graph
 
-use aip_core::{Did, Error as CoreError, RootKey, signing};
+use aip_core::{signing, Did, Error as CoreError, RootKey};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

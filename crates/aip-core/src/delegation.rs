@@ -1,6 +1,6 @@
 //! Delegation tokens for session and service keys.
 
-use crate::{Did, Error, Result, RootKey, signing};
+use crate::{signing, Did, Error, Result, RootKey};
 use chrono::{DateTime, Utc};
 use ed25519_dalek::{Signature, Verifier};
 use serde::{Deserialize, Serialize};

@@ -3,7 +3,10 @@
 //! Provides an append-only log of identity events with Merkle tree verification.
 //! This enables detection of key compromise and prevents silent key rotation.
 
-use aip_core::{Did, DidDocument, Error as CoreError, RootKey, signing, KeyRotation, Revocation, RootRecovery, RecoveryCancellation};
+use aip_core::{
+    signing, Did, DidDocument, Error as CoreError, KeyRotation, RecoveryCancellation, Revocation,
+    RootKey, RootRecovery,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -514,7 +517,6 @@ pub fn create_document_entry(
 
     entry.sign(subject_key)
 }
-
 
 /// Helper to create a key rotation log entry.
 pub fn create_rotation_entry(

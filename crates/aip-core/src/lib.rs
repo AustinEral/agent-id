@@ -24,8 +24,8 @@ pub use did::Did;
 pub use document::DidDocument;
 pub use error::Error;
 pub use keys::{RootKey, SessionKey};
-pub use lifecycle::{KeyRotation, Revocation, RootRecovery, RecoveryCancellation};
-pub use receipt::{InteractionReceipt, InteractionContext, InteractionType, InteractionOutcome};
+pub use lifecycle::{KeyRotation, RecoveryCancellation, Revocation, RootRecovery};
+pub use receipt::{InteractionContext, InteractionOutcome, InteractionReceipt, InteractionType};
 
 /// Result type for aip-core operations.
 pub type Result<T> = std::result::Result<T, Error>;

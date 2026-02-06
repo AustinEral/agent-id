@@ -1,6 +1,6 @@
 //! Interaction receipts for recording agent-to-agent interactions.
 
-use crate::{Did, Error, Result, RootKey, signing};
+use crate::{signing, Did, Error, Result, RootKey};
 use chrono::{DateTime, Utc};
 use ed25519_dalek::{Signature, Verifier};
 use serde::{Deserialize, Serialize};
@@ -68,7 +68,11 @@ pub struct InteractionContext {
 
 impl InteractionContext {
     /// Create a new interaction context.
-    pub fn new(platform: impl Into<String>, channel: impl Into<String>, interaction_type: InteractionType) -> Self {
+    pub fn new(
+        platform: impl Into<String>,
+        channel: impl Into<String>,
+        interaction_type: InteractionType,
+    ) -> Self {
         Self {
             platform: platform.into(),
             channel: channel.into(),
@@ -149,11 +153,7 @@ pub struct InteractionReceipt {
 
 impl InteractionReceipt {
     /// Create a new unsigned interaction receipt.
-    pub fn new(
-        initiator: Did,
-        participants: Vec<Did>,
-        context: InteractionContext,
-    ) -> Self {
+    pub fn new(initiator: Did, participants: Vec<Did>, context: InteractionContext) -> Self {
         Self {
             type_: "InteractionReceipt".to_string(),
             version: "1.0".to_string(),
@@ -206,31 +206,34 @@ impl InteractionReceipt {
         let canonical = self.signing_data()?;
         let sig = signer.sign(&canonical);
 
-        self.signatures.insert(did, ParticipantSignature {
-            key: key_id.into(),
-            sig: base64::Engine::encode(
-                &base64::engine::general_purpose::STANDARD,
-                sig.to_bytes(),
-            ),
-            signed_at: Utc::now().timestamp_millis(),
-        });
+        self.signatures.insert(
+            did,
+            ParticipantSignature {
+                key: key_id.into(),
+                sig: base64::Engine::encode(
+                    &base64::engine::general_purpose::STANDARD,
+                    sig.to_bytes(),
+                ),
+                signed_at: Utc::now().timestamp_millis(),
+            },
+        );
 
         Ok(())
     }
 
     /// Verify a specific participant's signature.
     pub fn verify_participant(&self, participant_did: &str) -> Result<()> {
-        let sig_data = self.signatures.get(participant_did)
+        let sig_data = self
+            .signatures
+            .get(participant_did)
             .ok_or_else(|| Error::Validation("No signature from participant".into()))?;
 
-        let sig_bytes = base64::Engine::decode(
-            &base64::engine::general_purpose::STANDARD,
-            &sig_data.sig,
-        ).map_err(|_| Error::InvalidSignature)?;
+        let sig_bytes =
+            base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &sig_data.sig)
+                .map_err(|_| Error::InvalidSignature)?;
 
-        let signature = Signature::from_bytes(
-            &sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?
-        );
+        let signature =
+            Signature::from_bytes(&sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?);
 
         let did: Did = participant_did.parse()?;
         let public_key = did.public_key()?;
@@ -252,7 +255,9 @@ impl InteractionReceipt {
 
     /// Check if all participants have signed.
     pub fn is_fully_signed(&self) -> bool {
-        self.participants.iter().all(|p| self.signatures.contains_key(p))
+        self.participants
+            .iter()
+            .all(|p| self.signatures.contains_key(p))
     }
 
     /// Get list of participants who haven't signed yet.
@@ -282,11 +287,8 @@ mod tests {
         let context = InteractionContext::new("moltbook", "public_post", InteractionType::Reply)
             .with_content(b"Hello, world!");
 
-        let receipt = InteractionReceipt::new(
-            agent_a.did(),
-            vec![agent_a.did(), agent_b.did()],
-            context,
-        );
+        let receipt =
+            InteractionReceipt::new(agent_a.did(), vec![agent_a.did(), agent_b.did()], context);
 
         assert_eq!(receipt.participants.len(), 2);
         assert_eq!(receipt.initiator, agent_a.did().to_string());
@@ -300,15 +302,17 @@ mod tests {
 
         let context = InteractionContext::new("discord", "dm", InteractionType::Message);
 
-        let mut receipt = InteractionReceipt::new(
-            agent_a.did(),
-            vec![agent_a.did(), agent_b.did()],
-            context,
-        ).with_outcome(InteractionOutcome::Completed);
+        let mut receipt =
+            InteractionReceipt::new(agent_a.did(), vec![agent_a.did(), agent_b.did()], context)
+                .with_outcome(InteractionOutcome::Completed);
 
         // Sign from both parties
-        receipt.sign(&agent_a, format!("{}#session-1", agent_a.did())).unwrap();
-        receipt.sign(&agent_b, format!("{}#session-1", agent_b.did())).unwrap();
+        receipt
+            .sign(&agent_a, format!("{}#session-1", agent_a.did()))
+            .unwrap();
+        receipt
+            .sign(&agent_b, format!("{}#session-1", agent_b.did()))
+            .unwrap();
 
         assert!(receipt.is_fully_signed());
         receipt.verify_all().unwrap();
@@ -321,13 +325,12 @@ mod tests {
 
         let context = InteractionContext::new("moltbook", "post", InteractionType::Endorsement);
 
-        let mut receipt = InteractionReceipt::new(
-            agent_a.did(),
-            vec![agent_a.did(), agent_b.did()],
-            context,
-        );
+        let mut receipt =
+            InteractionReceipt::new(agent_a.did(), vec![agent_a.did(), agent_b.did()], context);
 
-        receipt.sign(&agent_a, format!("{}#root", agent_a.did())).unwrap();
+        receipt
+            .sign(&agent_a, format!("{}#root", agent_a.did()))
+            .unwrap();
 
         assert!(!receipt.is_fully_signed());
         assert_eq!(receipt.pending_signatures().len(), 1);
@@ -342,11 +345,8 @@ mod tests {
 
         let context = InteractionContext::new("platform", "channel", InteractionType::Message);
 
-        let mut receipt = InteractionReceipt::new(
-            agent_a.did(),
-            vec![agent_a.did(), agent_b.did()],
-            context,
-        );
+        let mut receipt =
+            InteractionReceipt::new(agent_a.did(), vec![agent_a.did(), agent_b.did()], context);
 
         let result = receipt.sign(&outsider, format!("{}#root", outsider.did()));
         assert!(result.is_err());
@@ -354,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_reply_context() {
-        let agent = RootKey::generate();
+        let _agent = RootKey::generate();
 
         let context = InteractionContext::new("twitter", "reply", InteractionType::Reply)
             .with_parent("parent-tweet-id-123")

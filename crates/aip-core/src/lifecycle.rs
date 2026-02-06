@@ -1,6 +1,6 @@
 //! Key lifecycle management: rotation, revocation, and recovery.
 
-use crate::{Did, Error, Result, RootKey, signing};
+use crate::{signing, Did, Error, Result, RootKey};
 use chrono::{DateTime, Duration, Utc};
 use ed25519_dalek::{Signature, Verifier};
 use serde::{Deserialize, Serialize};
@@ -116,8 +116,7 @@ impl KeyRotation {
 
     /// Set custom overlap period.
     pub fn overlap_duration(mut self, duration: Duration) -> Self {
-        let effective = DateTime::from_timestamp_millis(self.effective_at)
-            .unwrap_or_else(Utc::now);
+        let effective = DateTime::from_timestamp_millis(self.effective_at).unwrap_or_else(Utc::now);
         self.overlap_until = (effective + duration).timestamp_millis();
         self
     }
@@ -140,9 +139,8 @@ impl KeyRotation {
         let sig_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, sig_b64)
             .map_err(|_| Error::InvalidSignature)?;
 
-        let signature = Signature::from_bytes(
-            &sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?
-        );
+        let signature =
+            Signature::from_bytes(&sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?);
 
         let did: Did = self.did.parse()?;
         let public_key = did.public_key()?;
@@ -252,9 +250,8 @@ impl Revocation {
         let sig_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, sig_b64)
             .map_err(|_| Error::InvalidSignature)?;
 
-        let signature = Signature::from_bytes(
-            &sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?
-        );
+        let signature =
+            Signature::from_bytes(&sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?);
 
         let public_key = verifying_did.public_key()?;
 
@@ -373,9 +370,8 @@ impl RootRecovery {
         let sig_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, sig_b64)
             .map_err(|_| Error::InvalidSignature)?;
 
-        let signature = Signature::from_bytes(
-            &sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?
-        );
+        let signature =
+            Signature::from_bytes(&sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?);
 
         let public_key = recovery_did.public_key()?;
 
@@ -461,9 +457,8 @@ impl RecoveryCancellation {
         let sig_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, sig_b64)
             .map_err(|_| Error::InvalidSignature)?;
 
-        let signature = Signature::from_bytes(
-            &sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?
-        );
+        let signature =
+            Signature::from_bytes(&sig_bytes.try_into().map_err(|_| Error::InvalidSignature)?);
 
         let did: Did = self.did.parse()?;
         let public_key = did.public_key()?;
@@ -486,7 +481,10 @@ mod tests {
         NewKey {
             id: format!("{}#{}", root.did(), suffix),
             key_type: "Ed25519VerificationKey2020".to_string(),
-            public_key_multibase: format!("z{}", root.did().to_string().split(':').last().unwrap()),
+            public_key_multibase: format!(
+                "z{}",
+                root.did().to_string().split(':').next_back().unwrap()
+            ),
         }
     }
 
@@ -556,7 +554,10 @@ mod tests {
         )
         .with_revocation_id("delegation-uuid-123".to_string());
 
-        assert_eq!(revocation.revocation_id, Some("delegation-uuid-123".to_string()));
+        assert_eq!(
+            revocation.revocation_id,
+            Some("delegation-uuid-123".to_string())
+        );
     }
 
     #[test]
@@ -606,10 +607,7 @@ mod tests {
     fn test_recovery_cancellation() {
         let root = RootKey::generate();
 
-        let cancellation = RecoveryCancellation::new(
-            root.did(),
-            "recovery-uuid-123".to_string(),
-        );
+        let cancellation = RecoveryCancellation::new(root.did(), "recovery-uuid-123".to_string());
 
         let signed = cancellation.sign(&root).unwrap();
         assert!(signed.signature.is_some());

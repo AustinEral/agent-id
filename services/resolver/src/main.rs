@@ -5,10 +5,10 @@
 use aip_core::DidDocument;
 use aip_resolver::Resolver;
 use axum::{
-    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     routing::{get, post},
+    Json, Router,
 };
 use clap::Parser;
 use std::sync::Arc;
