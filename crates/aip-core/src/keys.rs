@@ -3,14 +3,28 @@
 use crate::{Did, Error, Result};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
+use std::fmt;
 
 /// A root identity key.
 ///
 /// This is the primary key that defines an agent's identity.
 /// It should be stored securely and used sparingly.
-#[derive(Debug)]
+///
+/// # Security
+///
+/// The `Debug` implementation intentionally only shows the DID (derived from the
+/// public key) to prevent accidental exposure of key material in logs or error
+/// messages. Use `did()` to get the public identifier.
 pub struct RootKey {
     signing_key: SigningKey,
+}
+
+impl fmt::Debug for RootKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RootKey")
+            .field("did", &self.did().to_string())
+            .finish_non_exhaustive()
+    }
 }
 
 impl RootKey {
@@ -52,10 +66,34 @@ impl RootKey {
 /// A session key delegated from a root key.
 ///
 /// Used for day-to-day operations without exposing the root key.
-#[derive(Debug)]
+///
+/// # Security
+///
+/// The `Debug` implementation intentionally only shows the root DID and a
+/// fingerprint of the public key to prevent accidental exposure of key material
+/// in logs or error messages.
 pub struct SessionKey {
     signing_key: SigningKey,
     root_did: Did,
+}
+
+impl fmt::Debug for SessionKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Show a short fingerprint of the public key (first 8 chars of base58)
+        let pubkey_fingerprint = {
+            let full = self.public_key_base58();
+            if full.len() > 8 {
+                format!("{}...", &full[..8])
+            } else {
+                full
+            }
+        };
+
+        f.debug_struct("SessionKey")
+            .field("root_did", &self.root_did.to_string())
+            .field("pubkey", &pubkey_fingerprint)
+            .finish_non_exhaustive()
+    }
 }
 
 impl SessionKey {
@@ -125,5 +163,65 @@ mod tests {
         let message = b"session message";
         let sig = session.sign(message);
         verify(&session.verifying_key(), message, &sig).unwrap();
+    }
+
+    #[test]
+    fn test_root_key_debug_does_not_leak_secrets() {
+        let root = RootKey::generate();
+        let debug_output = format!("{:?}", root);
+
+        // Should contain the DID (public info)
+        assert!(debug_output.contains("did:aip:1:"));
+
+        // Should NOT contain any of these patterns that would indicate leaked key material
+        assert!(
+            !debug_output.contains("FieldElement"),
+            "Debug output should not contain internal crypto field elements"
+        );
+        assert!(
+            !debug_output.contains("EdwardsPoint"),
+            "Debug output should not contain internal crypto types"
+        );
+        assert!(
+            !debug_output.to_lowercase().contains("secret"),
+            "Debug output should not reference 'secret'"
+        );
+
+        // Should use finish_non_exhaustive (indicated by "..")
+        assert!(
+            debug_output.contains(".."),
+            "Debug should indicate hidden fields with .."
+        );
+    }
+
+    #[test]
+    fn test_session_key_debug_does_not_leak_secrets() {
+        let root = RootKey::generate();
+        let session = SessionKey::generate(root.did());
+        let debug_output = format!("{:?}", session);
+
+        // Should contain root_did and truncated pubkey
+        assert!(debug_output.contains("root_did"));
+        assert!(debug_output.contains("pubkey"));
+
+        // Pubkey should be truncated (ends with ...)
+        assert!(
+            debug_output.contains("...\""),
+            "Public key should be truncated in debug output"
+        );
+
+        // Should NOT contain leaked key material
+        assert!(
+            !debug_output.contains("FieldElement"),
+            "Debug output should not contain internal crypto field elements"
+        );
+        assert!(
+            !debug_output.contains("EdwardsPoint"),
+            "Debug output should not contain internal crypto types"
+        );
+        assert!(
+            !debug_output.to_lowercase().contains("secret"),
+            "Debug output should not reference 'secret'"
+        );
     }
 }
