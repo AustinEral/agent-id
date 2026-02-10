@@ -94,12 +94,12 @@ Each agent has a globally unique, self-issued identifier based on their cryptogr
 **Format:** DID (Decentralized Identifier) with a custom method
 
 ```
-did:aip:<version>:<base58(ed25519_public_key)>
+did:key:z<base58btc(multicodec + ed25519_public_key)>
 ```
 
 Example:
 ```
-did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y
 ```
 
 **Why DID format:**
@@ -110,7 +110,7 @@ did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
 
 **Why custom method vs `did:key`:**
 - `did:key` is purely self-certifying with no resolution infrastructure
-- `did:aip` implies network services (resolver, log) that enhance security
+- did:key format provides network services (resolver, log) that enhance security
 - Custom method allows protocol-specific semantics (session keys, delegation)
 - Can always fall back to `did:key` encoding for offline scenarios
 
@@ -142,7 +142,7 @@ did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
 {
   "type": "KeyDelegation",
   "version": "1.0",
-  "root_did": "did:aip:1:7Tqg2...",
+  "root_did": "did:key:z6MktN...",
   "delegate_pubkey": "base58(session_ed25519_pubkey)",
   "delegate_type": "session",
   "issued_at": 1738800000,
@@ -164,28 +164,28 @@ Each agent publishes an identity document (resolvable via the DID).
 ```json
 {
   "@context": ["https://www.w3.org/ns/did/v1", "https://aip.network/v1"],
-  "id": "did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt",
-  "controller": "did:aip:1:7Tqg2...",
+  "id": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
+  "controller": "did:key:z6MktN...",
   "verificationMethod": [
     {
-      "id": "did:aip:1:7Tqg2...#root",
+      "id": "did:key:z6MktN...#root",
       "type": "Ed25519VerificationKey2020",
-      "controller": "did:aip:1:7Tqg2...",
+      "controller": "did:key:z6MktN...",
       "publicKeyMultibase": "z6Mkf..."
     },
     {
     }
   ],
-  "authentication": ["did:aip:1:7Tqg2...#root"],
-  "assertionMethod": ["did:aip:1:7Tqg2...#root"],
+  "authentication": ["did:key:z6MktN...#root"],
+  "assertionMethod": ["did:key:z6MktN...#root"],
   "service": [
     {
-      "id": "did:aip:1:7Tqg2...#agent",
+      "id": "did:key:z6MktN...#agent",
       "type": "AgentService",
       "serviceEndpoint": "https://agent.example.com/.well-known/agent.json"
     },
     {
-      "id": "did:aip:1:7Tqg2...#handshake",
+      "id": "did:key:z6MktN...#handshake",
       "type": "AIPHandshake",
       "serviceEndpoint": "https://agent.example.com/aip/handshake"
     }
@@ -195,7 +195,7 @@ Each agent publishes an identity document (resolvable via the DID).
   "proof": {
     "type": "Ed25519Signature2020",
     "created": "2026-02-06T00:00:00Z",
-    "verificationMethod": "did:aip:1:7Tqg2...#root",
+    "verificationMethod": "did:key:z6MktN...#root",
     "proofValue": "z..."
   }
 }
@@ -210,7 +210,7 @@ Agent A                                          Agent B
    │                                                │
    │  1. HELLO                                      │
    │  ─────────────────────────────────────────────►│
-   │  { did: "did:aip:1:A...", protocols: [...] }   │
+   │  { did: "did:key:z6MkA...", protocols: [...] }   │
    │                                                │
    │  2. CHALLENGE                                  │
    │  ◄─────────────────────────────────────────────│
@@ -234,7 +234,7 @@ Agent A                                          Agent B
 {
   "type": "Hello",
   "version": "1.0",
-  "did": "did:aip:1:A...",
+  "did": "did:key:z6MkA...",
   "protocols": ["aip/1.0"],
   "timestamp": 1738800000000,
   "capabilities": ["trust-statements", "avatar-v1"]
@@ -248,7 +248,7 @@ Agent A                                          Agent B
   "version": "1.0",
   "nonce": "random_32_bytes_base64",
   "timestamp": 1738800000000,
-  "audience": "did:aip:1:A...",
+  "audience": "did:key:z6MkA...",
   "issuer": "did:aip:1:B...",
   "domain": "trust.aip.network",
   "session_pubkey": "base58(...)",
@@ -262,8 +262,8 @@ Agent A                                          Agent B
   "type": "Proof",
   "version": "1.0",
   "challenge_hash": "sha256(canonical_challenge)",
-  "responder_did": "did:aip:1:A...",
-  "signing_key": "did:aip:1:A...#session-1",
+  "responder_did": "did:key:z6MkA...",
+  "signing_key": "did:key:z6MkA...#session-1",
   "signature": "base64(ed25519_signature)",
   "delegation": { ... },
   "counter_challenge": {
@@ -282,7 +282,7 @@ Agent A                                          Agent B
   "code": "INVALID_SIGNATURE",
   "message": "Signature verification failed",
   "details": {
-    "expected_key": "did:aip:1:A...#session-1",
+    "expected_key": "did:key:z6MkA...#session-1",
     "challenge_hash": "sha256..."
   }
 }
@@ -332,11 +332,11 @@ All identity events are recorded in an append-only transparency log for auditabi
   "sequence": 1234567,
   "timestamp": 1738800000000,
   "event_type": "KeyRotation",
-  "subject_did": "did:aip:1:7Tqg2...",
+  "subject_did": "did:key:z6MktN...",
   "payload": {
-    "previous_key": "did:aip:1:7Tqg2...#root",
+    "previous_key": "did:key:z6MktN...#root",
     "new_key": {
-      "id": "did:aip:1:7Tqg2...#root-2",
+      "id": "did:key:z6MktN...#root-2",
       "publicKeyMultibase": "z6Mky..."
     },
     "effective_at": 1738800000000
@@ -381,14 +381,14 @@ Future: Federated operators
 {
   "type": "KeyRotation",
   "version": "1.0",
-  "did": "did:aip:1:7Tqg2...",
+  "did": "did:key:z6MktN...",
   "rotation_type": "root",
   "new_key": {
-    "id": "did:aip:1:7Tqg2...#root-2",
+    "id": "did:key:z6MktN...#root-2",
     "type": "Ed25519VerificationKey2020",
     "publicKeyMultibase": "z6Mky..."
   },
-  "previous_key": "did:aip:1:7Tqg2...#root",
+  "previous_key": "did:key:z6MktN...#root",
   "effective_at": 1738800000000,
   "overlap_until": 1738886400000,
   "reason": "scheduled",
@@ -415,8 +415,8 @@ Future: Federated operators
 {
   "type": "Revocation",
   "version": "1.0",
-  "did": "did:aip:1:7Tqg2...",
-  "revoked_key": "did:aip:1:7Tqg2...#session-1",
+  "did": "did:key:z6MktN...",
+  "revoked_key": "did:key:z6MktN...#session-1",
   "revocation_id": "matches delegation revocation_id",
   "reason": "compromised",
   "effective_at": 1738800000000,
@@ -461,8 +461,8 @@ A signed record of an interaction between two agents.
   "type": "InteractionReceipt",
   "version": "1.0",
   "id": "uuid-v7",
-  "participants": ["did:aip:1:A...", "did:aip:1:B..."],
-  "initiator": "did:aip:1:A...",
+  "participants": ["did:key:z6MkA...", "did:aip:1:B..."],
+  "initiator": "did:key:z6MkA...",
   "timestamp": 1738800000000,
   "context": {
     "platform": "moltbook",
@@ -473,8 +473,8 @@ A signed record of an interaction between two agents.
   },
   "outcome": "completed",
   "signatures": {
-    "did:aip:1:A...": {
-      "key": "did:aip:1:A...#session-1",
+    "did:key:z6MkA...": {
+      "key": "did:key:z6MkA...#session-1",
       "sig": "base64(...)",
       "signed_at": 1738800000100
     },
@@ -504,7 +504,7 @@ An agent's subjective assessment of another agent.
   "type": "TrustStatement",
   "version": "1.0",
   "id": "uuid-v7",
-  "issuer": "did:aip:1:A...",
+  "issuer": "did:key:z6MkA...",
   "subject": "did:aip:1:B...",
   "timestamp": 1738800000000,
   "assessment": {
@@ -527,7 +527,7 @@ An agent's subjective assessment of another agent.
   },
   "previous_statement": "uuid-of-previous-if-update",
   "signature": {
-    "key": "did:aip:1:A...#session-1",
+    "key": "did:key:z6MkA...#session-1",
     "sig": "base64(...)"
   }
 }
@@ -540,14 +540,14 @@ An agent's subjective assessment of another agent.
   "type": "BlockStatement",
   "version": "1.0",
   "id": "uuid-v7",
-  "issuer": "did:aip:1:A...",
+  "issuer": "did:key:z6MkA...",
   "subject": "did:aip:1:B...",
   "timestamp": 1738800000000,
   "reason": "spam",
   "severity": "permanent",
   "evidence_hash": "sha256(...)",
   "signature": {
-    "key": "did:aip:1:A...#session-1",
+    "key": "did:key:z6MkA...#session-1",
     "sig": "base64(...)"
   }
 }
@@ -618,10 +618,10 @@ Optional shared infrastructure for publishing trust statements.
 
 **Query API:**
 ```
-GET /trust/statements?issuer=did:aip:1:A...
+GET /trust/statements?issuer=did:key:z6MkA...
 GET /trust/statements?subject=did:aip:1:B...
-GET /trust/statements?issuer=did:aip:1:A...&subject=did:aip:1:B...
-GET /trust/graph?center=did:aip:1:A...&depth=2
+GET /trust/statements?issuer=did:key:z6MkA...&subject=did:aip:1:B...
+GET /trust/graph?center=did:key:z6MkA...&depth=2
 ```
 
 ---
@@ -650,7 +650,7 @@ An avatar is a visual identity bound to an agent's DID.
   "type": "AvatarBinding",
   "version": "1.0",
   "id": "uuid-v7",
-  "agent_did": "did:aip:1:7Tqg2...",
+  "agent_did": "did:key:z6MktN...",
   "avatar": {
     "collection_id": "aip-genesis",
     "collection_contract": "0x1234...5678",
@@ -669,7 +669,7 @@ An avatar is a visual identity bound to an agent's DID.
   "binding_type": "exclusive",
   "transferable": false,
   "signature": {
-    "key": "did:aip:1:7Tqg2...#root",
+    "key": "did:key:z6MktN...#root",
     "sig": "base64(...)"
   },
   "registry_attestation": {
@@ -1072,7 +1072,7 @@ Agents running on OpenClaw can integrate AIP:
 **Identity storage:**
 ```yaml
 # workspace/aip/identity.yaml (encrypted)
-did: did:aip:1:7Tqg2...
+did: did:key:z6MktN...
 root_key_ref: vault://aip/root  # or local encrypted file
 session_key: <current session key>
 delegation: <current delegation token>
@@ -1084,7 +1084,7 @@ delegation: <current delegation token>
   "name": "Bosun",
   "description": "...",
   "aip": {
-    "did": "did:aip:1:7Tqg2...",
+    "did": "did:key:z6MktN...",
     "handshake_endpoint": "https://bosun.example.com/aip/handshake",
     "trust_relay": "https://trust.aip.network"
   }
@@ -1101,7 +1101,7 @@ delegation: <current delegation token>
   "issuer": "did:web:moltbook.com",
   "issuanceDate": "2026-02-06T00:00:00Z",
   "credentialSubject": {
-    "id": "did:aip:1:7Tqg2...",
+    "id": "did:key:z6MktN...",
     "moltbookUsername": "Bosun",
     "moltbookId": "uuid...",
     "verifiedAt": "2026-02-06T00:00:00Z"
@@ -1149,7 +1149,7 @@ AIP complements A2A:
    ```python
    from aip import Identity
    identity = Identity.generate()
-   print(identity.did)  # did:aip:1:7Tqg2...
+   print(identity.did)  # did:key:z6MktN...
    ```
 
 2. **Perform handshake:**
