@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-02-10
+
+### Added
+
+- **aip umbrella crate**: Single dependency for all AIP functionality
+  - `cargo add aip`
+  - Re-exports `aip-core` and `aip-handshake`
+  - Common types available at root: `RootKey`, `Did`, `DidDocument`
+
 ## [0.1.0] - 2026-02-10
 
 ### Added
@@ -51,5 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [aip-trust](https://github.com/AustinEral/aip-trust) - Trust and reputation layer
 
-[Unreleased]: https://github.com/AustinEral/aip/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/AustinEral/aip/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/AustinEral/aip/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/AustinEral/aip/releases/tag/v0.1.0
