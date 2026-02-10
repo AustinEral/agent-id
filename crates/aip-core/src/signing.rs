@@ -1,4 +1,8 @@
 //! JCS canonicalization and message signing.
+//!
+//! Uses RFC 8785 JSON Canonicalization Scheme for deterministic
+//! JSON serialization, ensuring signatures are verifiable across
+//! different implementations.
 
 use crate::Result;
 use serde::Serialize;
@@ -7,68 +11,22 @@ use sha2::{Digest, Sha256};
 /// Canonicalize a JSON value using JCS (RFC 8785).
 ///
 /// This produces a deterministic byte representation suitable for signing.
+/// The canonicalization follows RFC 8785 exactly, ensuring interoperability
+/// with other AIP implementations.
 pub fn canonicalize<T: Serialize>(value: &T) -> Result<Vec<u8>> {
-    // serde_json with sorted keys approximates JCS
-    // For production, use a proper JCS library
-    let json = serde_json::to_value(value)?;
-    let canonical = serialize_canonical(&json);
-    Ok(canonical.into_bytes())
+    serde_json_canonicalizer::to_vec(value)
+        .map_err(|e| crate::Error::Validation(format!("JCS canonicalization failed: {}", e)))
 }
 
 /// SHA-256 hash of canonical JSON.
+///
+/// This is the standard way to prepare data for signing in AIP.
+/// The value is first canonicalized using JCS, then hashed with SHA-256.
 pub fn hash<T: Serialize>(value: &T) -> Result<[u8; 32]> {
     let canonical = canonicalize(value)?;
     let mut hasher = Sha256::new();
     hasher.update(&canonical);
     Ok(hasher.finalize().into())
-}
-
-/// Serialize JSON value in canonical form (sorted keys, no whitespace).
-fn serialize_canonical(value: &serde_json::Value) -> String {
-    match value {
-        serde_json::Value::Null => "null".to_string(),
-        serde_json::Value::Bool(b) => b.to_string(),
-        serde_json::Value::Number(n) => n.to_string(),
-        serde_json::Value::String(s) => format!("\"{}\"", escape_json_string(s)),
-        serde_json::Value::Array(arr) => {
-            let items: Vec<String> = arr.iter().map(serialize_canonical).collect();
-            format!("[{}]", items.join(","))
-        }
-        serde_json::Value::Object(obj) => {
-            let mut keys: Vec<&String> = obj.keys().collect();
-            keys.sort();
-            let pairs: Vec<String> = keys
-                .iter()
-                .map(|k| {
-                    format!(
-                        "\"{}\":{}",
-                        escape_json_string(k),
-                        serialize_canonical(&obj[*k])
-                    )
-                })
-                .collect();
-            format!("{{{}}}", pairs.join(","))
-        }
-    }
-}
-
-/// Escape special characters in JSON strings.
-fn escape_json_string(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '"' => result.push_str("\\\""),
-            '\\' => result.push_str("\\\\"),
-            '\n' => result.push_str("\\n"),
-            '\r' => result.push_str("\\r"),
-            '\t' => result.push_str("\\t"),
-            c if c.is_control() => {
-                result.push_str(&format!("\\u{:04x}", c as u32));
-            }
-            c => result.push(c),
-        }
-    }
-    result
 }
 
 #[cfg(test)]
@@ -96,5 +54,38 @@ mod tests {
         let hash1 = hash(&value).unwrap();
         let hash2 = hash(&value).unwrap();
         assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_unicode_handling() {
+        // RFC 8785 specifies exact Unicode handling
+        let value = json!({"emoji": "🎉", "text": "héllo"});
+        let canonical = canonicalize(&value).unwrap();
+        // Should produce consistent output regardless of input encoding
+        let canonical_str = String::from_utf8(canonical).unwrap();
+        assert!(canonical_str.contains("emoji"));
+        assert!(canonical_str.contains("text"));
+    }
+
+    #[test]
+    fn test_number_formatting() {
+        // RFC 8785 specifies number serialization rules
+        let value = json!({"int": 42, "float": 3.125});
+        let canonical = canonicalize(&value).unwrap();
+        let canonical_str = String::from_utf8(canonical).unwrap();
+        assert!(canonical_str.contains("42"));
+        assert!(canonical_str.contains("3.125"));
+    }
+
+    #[test]
+    fn test_special_characters() {
+        // Verify proper escaping of special characters
+        let value = json!({"quote": "he said \"hello\"", "newline": "line1\nline2"});
+        let canonical = canonicalize(&value).unwrap();
+        let canonical_str = String::from_utf8(canonical).unwrap();
+        // Escaped quote should appear as \"
+        assert!(canonical_str.contains(r#"\""#));
+        // Newline should appear as \n
+        assert!(canonical_str.contains(r"\n"));
     }
 }
