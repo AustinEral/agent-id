@@ -946,7 +946,7 @@ Agent A                          Registry                         Agent B
 ### 5. Moltbook integration?
 
 **Position:** Bridge via VC attestation.
-- Moltbook issues VC: "did:aip:X is @Username on Moltbook"
+- Moltbook issues VC: "did:key:z6MkX is @Username on Moltbook"
 - Doesn't require Moltbook to adopt AIP internally
 - Agents can verify Moltbook attestation signature
 - Gradual migration path
