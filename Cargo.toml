@@ -3,20 +3,15 @@ resolver = "2"
 members = [
     "crates/aip-core",
     "crates/aip-handshake",
-    "crates/aip-log",
-    "crates/aip-resolver",
     "crates/aip-trust",
-    "services/resolver",
-    "services/log",
     "cli",
     "examples",
-    "services/relay",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "Apache-2.0"
 repository = "https://github.com/AustinEral/aip"
 
 [workspace.dependencies]
