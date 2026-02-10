@@ -4,11 +4,10 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-[[example]]
-name = "basic"
-path = "basic.rs"
-
 [dependencies]
 aip-core = { path = "../crates/aip-core" }
 aip-handshake = { path = "../crates/aip-handshake" }
-aip-trust = { path = "../crates/aip-trust" }
+
+[[example]]
+name = "basic"
+path = "basic.rs"

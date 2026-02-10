@@ -4,14 +4,12 @@
 //! - Creating an identity
 //! - Creating a DID Document
 //! - Performing a handshake between two agents
-//! - Issuing trust statements
 //!
 //! Run with: cargo run --example basic
 
 use aip_core::{DidDocument, RootKey};
 use aip_handshake::messages::Hello;
 use aip_handshake::protocol::{sign_proof, Verifier};
-use aip_trust::TrustStatement;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== AIP Basic Example ===\n");
@@ -24,8 +22,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let alice_key = RootKey::generate();
     let bob_key = RootKey::generate();
 
-    println!("   Alice's DID: {}", alice_key.did());
-    println!("   Bob's DID:   {}", bob_key.did());
+    println!("   Alice DID: {}", alice_key.did());
+    println!("   Bob DID:   {}", bob_key.did());
     println!();
 
     // =========================================
@@ -41,13 +39,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_handshake_endpoint("https://bob.example/aip/handshake")
         .sign(&bob_key)?;
 
-    println!("   Alice's document signed: ✓");
-    println!("   Bob's document signed:   ✓");
+    println!("   Alice document signed: ✓");
+    println!("   Bob document signed:   ✓");
 
     // Verify documents
     alice_doc.verify()?;
     bob_doc.verify()?;
-    println!("   Documents verified:      ✓");
+    println!("   Documents verified:    ✓");
     println!();
 
     // =========================================
@@ -68,35 +66,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let proof = sign_proof(&challenge, &bob_key.did(), &bob_key, None)?;
     println!("   Bob signs Proof:         ✓");
 
-    // Alice verifies Bob's proof
+    // Alice verifies Bob proof
     alice_verifier.verify_proof(&proof, &challenge)?;
     println!("   Alice verifies Bob:      ✓");
-    println!();
-
-    // =========================================
-    // Step 4: Issue trust statements
-    // =========================================
-    println!("4. Issuing trust statements...");
-
-    // Alice trusts Bob (score 0.85)
-    let alice_trusts_bob = TrustStatement::new(alice_key.did(), bob_key.did(), 0.85)
-        .with_tags(vec!["verified".into(), "helpful".into()])
-        .sign(&alice_key)?;
-
-    println!("   Alice → Bob (trust: 0.85): ✓");
-
-    // Verify the statement
-    alice_trusts_bob.verify()?;
-    println!("   Statement verified:        ✓");
-
-    // Bob trusts Alice back (score 0.9)
-    let bob_trusts_alice = TrustStatement::new(bob_key.did(), alice_key.did(), 0.9)
-        .with_tags(vec!["verified".into(), "reliable".into()])
-        .sign(&bob_key)?;
-
-    println!("   Bob → Alice (trust: 0.9):  ✓");
-    bob_trusts_alice.verify()?;
-    println!("   Statement verified:        ✓");
     println!();
 
     // =========================================
@@ -106,9 +78,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✓ Created 2 agent identities");
     println!("✓ Created and signed DID Documents");
     println!("✓ Performed handshake verification");
-    println!("✓ Issued and verified trust statements");
     println!();
-    println!("Alice and Bob have established verified, trusted identities!");
+    println!("Alice and Bob can now communicate with verified identities!");
+    println!();
+    println!("For trust/reputation features, see: https://github.com/AustinEral/aip-trust");
 
     Ok(())
 }
