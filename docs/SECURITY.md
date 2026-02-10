@@ -1,126 +1,86 @@
-# AIP Hardening
+# AIP Security
 
-Verified issues and improvements.
+Security considerations and known issues.
 
 ---
 
-## Verified Issues
+## Security Properties
 
-### 1. Nonce Cache Memory Leak
-**Location:** `crates/aip-handshake/src/protocol.rs:20-45`  
-**Status:** CONFIRMED
+| Property | Status | Implementation |
+|----------|--------|----------------|
+| Ed25519 signatures | ✅ | Audited `ed25519-dalek` crate |
+| DID self-certification | ✅ | Public key embedded in DID |
+| Replay protection | ✅ | Nonce + timestamp validation |
+| Input validation | ✅ | Error returns, no panics |
 
-```rust
-pub struct NonceCache {
-    seen: Mutex<HashSet<String>>,
-    #[allow(dead_code)]  // <-- Compiler confirms it's unused
-    max_age_ms: i64,
-}
+---
+
+## Known Issues
+
+### 1. Nonce Cache Memory Growth
+
+**Location:** `crates/aip-handshake/src/protocol.rs`
+
+The nonce cache doesn't expire old entries. In long-running verifiers, memory will grow unbounded.
+
+**Impact:** Memory growth over time. Not a concern for CLI/short-lived use.
+
+**Mitigation:** Timestamp validation is the primary replay defense. The nonce cache is secondary.
+
+**Status:** Documented. Will fix if deploying as long-running service.
+
+### 2. Session Keys Not Yet Implemented
+
+Handshake only accepts root key signatures. Session key delegation exists in `aip-core` but isn't used in verification yet.
+
+**Impact:** Root key must be used for every handshake instead of short-lived session keys.
+
+**Status:** Future enhancement.
+
+---
+
+## Cryptographic Details
+
+### Algorithms
+
+- **Signing**: Ed25519 (RFC 8032)
+- **Key encoding**: Base58btc with multicodec prefix
+- **Canonicalization**: RFC 8785 (JCS)
+
+### DID Format
+
+```
+did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y
+        └─ z = base58btc
+           6Mk = Ed25519 multicodec (0xed01)
+           ... = 32-byte public key
 ```
 
-The `max_age_ms` field is stored but never read. Nonces accumulate forever.
-
-**Impact:** Memory grows unbounded in long-running verifiers.
-
-**Status:** Deferred. For CLI/short-lived use, not a concern. Timestamp validation is primary defense. Revisit if deploying as long-running service.
-
----
-
-### 2. Session Key Delegation Not Implemented
-**Location:** `crates/aip-handshake/src/protocol.rs:115`  
-**Status:** CONFIRMED
-
-```rust
-// TODO: Support delegated session keys
-```
-
-Handshake verification only accepts root key signatures. The `Delegation` type exists in aip-core but isn't used in verification.
-
-**Impact:** Agents must expose root key for every handshake instead of using short-lived session keys.
-
-**Fix needed:** 
-- Accept session key signatures in `verify_proof()`
-- Verify delegation chain to root
-- Check delegation expiry and capabilities
+To verify a DID:
+1. Strip `did:key:` prefix
+2. Decode base58btc (strip `z` prefix)
+3. Verify multicodec prefix is `0xed01`
+4. Extract 32-byte Ed25519 public key
 
 ---
 
-## Verified Working
+## Reporting Vulnerabilities
 
-### DID Document Signature Verification ✓
-**Location:** `crates/aip-resolver/src/lib.rs:45-50, 70-75`
+If you discover a security vulnerability, please report it privately.
 
-Resolver correctly calls `document.verify()` on both `register()` and `update()`. Invalid signatures are rejected with `ResolverError::InvalidDocument`.
+**Do not open public GitHub issues for security vulnerabilities.**
 
-### DID Parsing ✓
-**Location:** `crates/aip-core/src/did.rs`
-
-Robust error handling:
-- Validates 4-part structure
-- Validates "did:key" prefix
-- Validates version is numeric
-- Validates base58 decoding
-- Validates public key is exactly 32 bytes
-
-Returns `Error::InvalidDid` on all failures, no panics.
-
-### Transparency Log Verification ✓
-**Location:** `crates/aip-log/src/lib.rs`
-
-Log correctly verifies:
-- Subject signatures before appending (line 340)
-- Entry hash integrity (line 343)
-- Inclusion proofs (line 254)
+Contact the maintainers directly or use GitHub's private vulnerability reporting.
 
 ---
 
-## Improvements to Consider
+## Dependencies
 
-### 3. Mutex Poisoning
-**Location:** `crates/aip-handshake/src/protocol.rs:34, 44`
+Security-critical dependencies:
 
-```rust
-let mut seen = self.seen.lock().unwrap();
-```
-
-If a thread panics while holding the lock, subsequent calls will panic. This is Rust's default behavior and usually acceptable (fail-fast), but consider using `lock().unwrap_or_else(|e| e.into_inner())` if graceful recovery is preferred.
-
-### 4. Test Vectors
-**Status:** Not yet created
-
-For interoperability, create canonical test cases:
-- Valid/invalid DID strings
-- Known-good signature verification
-- Complete handshake transcripts
-
-### 5. Fuzz Testing
-**Status:** Not yet implemented
-
-Priority targets based on complexity:
-1. `Did::from_str` - string parsing
-2. JSON deserialization of protocol messages
-3. Base58/Base64 decoding paths
-
----
-
-## What's Actually Solid
-
-After review, the core security properties are sound:
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Ed25519 signatures | ✓ | Uses audited `ed25519-dalek` |
-| DID self-certification | ✓ | Public key embedded in DID |
-| Handshake replay protection | ✓ | Nonce + timestamp (except memory leak) |
-| DID Document signing | ✓ | Verified on store |
-| Log entry signing | ✓ | Subject + operator signatures |
-| Input validation | ✓ | Error returns, not panics |
-
----
-
-## Priority
-
-1. **Fix nonce cache expiry** - Real bug, will cause OOM
-2. **Implement session key verification** - Security best practice not yet usable
-3. **Add test vectors** - Needed for any other implementations
-4. **Add fuzz testing** - Defense in depth
+| Crate | Purpose | Notes |
+|-------|---------|-------|
+| `ed25519-dalek` | Signatures | Audited, widely used |
+| `rand` | Key generation | Uses OS entropy |
+| `sha2` | Hashing | Pure Rust, audited |
+| `bs58` | Base58 encoding | Standard Bitcoin alphabet |

@@ -1,28 +1,24 @@
 # AIP Roadmap
 
-## Future Enhancements
+## Current (v0.1.0)
 
-### Identity Recovery (Planned)
-- **Seed phrase key derivation** — BIP-39 style mnemonic for key backup
-- **Social recovery** — k-of-n threshold signatures from trusted agents
-- Design goal: no single point of compromise
+- ✅ Core identity (DID, keypairs)
+- ✅ Mutual authentication handshake
+- ✅ CLI tool
+- ✅ did:key format (W3C standard)
 
-### Security Hardening
-- **Sequence numbers in signatures** — Detect key compromise via duplicate sequence
-- **Epoch credentials** — Short-lived validity tokens to limit revocation propagation window
-- **Rate limiting** — Protect services from spam/DoS
-- **Fail-closed resolver API** — Library refuses unverified documents by default
+## Planned
 
-### Trust Layer
-- **Reputation decay** — Trust scores decrease over time without interaction
-- **Stake mechanism** — Require commitment to publish trust statements
-- **Anti-Sybil measures** — Prevent fake identity/trust graph attacks
+### Near-term
+- **Session keys**: Short-lived delegated keys for routine operations
+- **MCP server**: Tool integration for AI agent frameworks
+- **HTTP transport**: Standard endpoints for handshakes
 
-### Infrastructure
-- **Multi-server transparency log** — Eliminate single point of failure
-- **Federated resolvers** — Decentralized document resolution
-- **Push-based revocation** — Real-time revocation propagation
+### Future
+- **Key recovery**: BIP-39 style seed phrases
+- **Fuzz testing**: Security hardening
+- **Multi-language SDKs**: Python, TypeScript
 
----
+## Related Projects
 
-*Items are not prioritized. Implementation depends on real-world usage patterns.*
+- [aip-trust](https://github.com/AustinEral/aip-trust) — Trust and reputation layer
