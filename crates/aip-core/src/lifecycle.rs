@@ -33,7 +33,7 @@ pub enum RotationReason {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewKey {
-    /// Key identifier (e.g., "did:aip:1:...#root-2").
+    /// Key identifier (e.g., "did:key:...#root-2").
     pub id: String,
     /// Key type.
     #[serde(rename = "type")]

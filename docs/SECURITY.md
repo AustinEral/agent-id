@@ -57,7 +57,7 @@ Resolver correctly calls `document.verify()` on both `register()` and `update()`
 
 Robust error handling:
 - Validates 4-part structure
-- Validates "did:aip" prefix
+- Validates "did:key" prefix
 - Validates version is numeric
 - Validates base58 decoding
 - Validates public key is exactly 32 bytes

@@ -21,7 +21,7 @@ This guide shows how to integrate AIP identity into your agent or application.
 Every agent has a DID derived from their public key:
 
 ```
-did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+did:key:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
 │   │   │  └─ Base58-encoded Ed25519 public key
 │   │   └──── Version (1 = Ed25519)
 │   └──────── Method (aip)

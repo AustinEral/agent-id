@@ -28,8 +28,7 @@ struct ValidDidCase {
 
 #[derive(Deserialize)]
 struct ExpectedDid {
-    version: u8,
-    public_key_base58: String,
+    key_id: String,
 }
 
 #[derive(Deserialize)]
@@ -49,14 +48,8 @@ fn test_valid_dids() {
             .unwrap_or_else(|e| panic!("{}: failed to parse: {}", case.description, e));
 
         assert_eq!(
-            did.version(),
-            case.expected.version,
-            "{}: version mismatch",
-            case.description
-        );
-        assert_eq!(
             did.key_id(),
-            case.expected.public_key_base58,
+            case.expected.key_id,
             "{}: key_id mismatch",
             case.description
         );
@@ -109,7 +102,7 @@ struct TestKeys {
 struct TestKey {
     seed_hex: String,
     did: String,
-    public_key_base58: String,
+    public_key_hex: String,
 }
 
 #[derive(Deserialize)]

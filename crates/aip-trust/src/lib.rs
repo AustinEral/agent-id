@@ -534,7 +534,7 @@ mod tests {
         intermediaries.insert(did_b.to_string(), 0.9);
 
         // Derived trust in C = 0.8 * 0.9 * 0.7 = 0.504
-        let derived = graph.derived_trust("did:aip:1:C", &intermediaries);
+        let derived = graph.derived_trust("did:key:C", &intermediaries);
         assert!((derived - 0.504).abs() < 0.001);
     }
 }

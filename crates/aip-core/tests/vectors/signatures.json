@@ -1,17 +1,17 @@
 {
   "description": "Signature verification test vectors for AIP",
-  "version": "1.0",
+  "version": "2.0",
   "note": "Seeds are well-known test values (NOT secret). Use ed25519-dalek SigningKey::from_bytes().",
   "test_keys": {
     "agent_a": {
       "seed_hex": "0100000000000000000000000000000000000000000000000000000000000000",
-      "did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
-      "public_key_base58": "EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb"
+      "did": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
+      "public_key_hex": "cecc1507dc1ddd7295951c290888f095adb9044d1b73d696e6df065d683bd4fc"
     },
     "agent_b": {
       "seed_hex": "0200000000000000000000000000000000000000000000000000000000000000",
-      "did": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
-      "public_key_base58": "8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7"
+      "did": "did:key:z6MkmgoN6DceCkjksTeZo42bhE9MdUpKSfdehRSfrWR9AQPV",
+      "public_key_hex": "6b79c57e6a095239282c04818e96112f3f03a4001ba97a564c23852a3f1ea5fc"
     }
   },
   "valid_signatures": [
@@ -36,21 +36,21 @@
     {
       "description": "All-zeros signature should fail",
       "message": "AIP test vector message",
-      "claimed_signer_did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "claimed_signer_did": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
       "signature_hex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "should_fail": true
     },
     {
       "description": "Truncated signature (32 bytes instead of 64)",
       "message": "AIP test vector message",
-      "claimed_signer_did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "claimed_signer_did": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
       "signature_hex": "e08f3281942a8265e0f646f1621fbaf14ea70de4153e16161654ee51a9e2d921",
       "should_fail": true
     },
     {
       "description": "Valid signature but wrong message",
       "message": "WRONG message",
-      "claimed_signer_did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "claimed_signer_did": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
       "signature_hex": "e08f3281942a8265e0f646f1621fbaf14ea70de4153e16161654ee51a9e2d921ecdc1c99bd41b611076c57c65440b2bb0abb58db453db88b62f1d3513bd6a503",
       "should_fail": true
     }
