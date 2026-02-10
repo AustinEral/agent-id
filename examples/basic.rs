@@ -4,14 +4,12 @@
 //! - Creating an identity
 //! - Creating a DID Document
 //! - Performing a handshake between two agents
-//! - Issuing trust statements
 //!
 //! Run with: cargo run --example basic
 
 use aip_core::{DidDocument, RootKey};
 use aip_handshake::messages::Hello;
 use aip_handshake::protocol::{sign_proof, Verifier};
-use aip_trust::TrustStatement;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== AIP Basic Example ===\n");
@@ -74,41 +72,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // =========================================
-    // Step 4: Issue trust statements
-    // =========================================
-    println!("4. Issuing trust statements...");
-
-    // Alice trusts Bob (score 0.85)
-    let alice_trusts_bob = TrustStatement::new(alice_key.did(), bob_key.did(), 0.85)
-        .with_tags(vec!["verified".into(), "helpful".into()])
-        .sign(&alice_key)?;
-
-    println!("   Alice → Bob (trust: 0.85): ✓");
-
-    // Verify the statement
-    alice_trusts_bob.verify()?;
-    println!("   Statement verified:        ✓");
-
-    // Bob trusts Alice back (score 0.9)
-    let bob_trusts_alice = TrustStatement::new(bob_key.did(), alice_key.did(), 0.9)
-        .with_tags(vec!["verified".into(), "reliable".into()])
-        .sign(&bob_key)?;
-
-    println!("   Bob → Alice (trust: 0.9):  ✓");
-    bob_trusts_alice.verify()?;
-    println!("   Statement verified:        ✓");
-    println!();
-
-    // =========================================
     // Summary
     // =========================================
     println!("=== Summary ===");
     println!("✓ Created 2 agent identities");
     println!("✓ Created and signed DID Documents");
     println!("✓ Performed handshake verification");
-    println!("✓ Issued and verified trust statements");
     println!();
-    println!("Alice and Bob have established verified, trusted identities!");
+    println!("Alice and Bob can now communicate with verified identities!");
+    println!();
+    println!("For trust/reputation features, see: https://github.com/AustinEral/aip-trust");
 
     Ok(())
 }
