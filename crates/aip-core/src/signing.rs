@@ -70,11 +70,11 @@ mod tests {
     #[test]
     fn test_number_formatting() {
         // RFC 8785 specifies number serialization rules
-        let value = json!({"int": 42, "float": 3.14});
+        let value = json!({"int": 42, "float": 3.125});
         let canonical = canonicalize(&value).unwrap();
         let canonical_str = String::from_utf8(canonical).unwrap();
         assert!(canonical_str.contains("42"));
-        assert!(canonical_str.contains("3.14"));
+        assert!(canonical_str.contains("3.125"));
     }
 
     #[test]
