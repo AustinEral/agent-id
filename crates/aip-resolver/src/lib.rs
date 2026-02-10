@@ -1,6 +1,6 @@
 //! DID Resolver for the Agent Identity Protocol.
 //!
-//! Resolves `did:aip:...` identifiers to DID Documents.
+//! Resolves `did:key:...` identifiers to DID Documents.
 
 use aip_core::{DidDocument, Error as CoreError};
 use std::collections::HashMap;
