@@ -5,7 +5,7 @@
 
 #![allow(dead_code)] // JSON fields intentionally unused in some cases
 
-use aip_core::{Did, RootKey};
+use agent_id_core::{Did, RootKey};
 use serde::Deserialize;
 use std::str::FromStr;
 
@@ -174,7 +174,7 @@ fn test_valid_signatures() {
 
         // Also verify the signature
         let public_key = key_a.verifying_key();
-        aip_core::keys::verify(&public_key, case.message.as_bytes(), &signature)
+        agent_id_core::keys::verify(&public_key, case.message.as_bytes(), &signature)
             .unwrap_or_else(|e| panic!("{}: verification failed: {}", case.description, e));
     }
 }
@@ -205,7 +205,7 @@ fn test_invalid_signatures() {
             &sig_bytes.try_into().expect("Wrong signature length"),
         );
 
-        let result = aip_core::keys::verify(&public_key, case.message.as_bytes(), &signature);
+        let result = agent_id_core::keys::verify(&public_key, case.message.as_bytes(), &signature);
         assert!(
             result.is_err(),
             "{}: should have failed verification",

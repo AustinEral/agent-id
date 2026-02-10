@@ -1,4 +1,4 @@
-//! # aip-core
+//! # agent-id-core
 //!
 //! Core identity primitives for the Agent Identity Protocol.
 //!
@@ -27,5 +27,5 @@ pub use keys::{RootKey, SessionKey};
 pub use lifecycle::{KeyRotation, Revocation};
 pub use receipt::{InteractionContext, InteractionOutcome, InteractionReceipt, InteractionType};
 
-/// Result type for aip-core operations.
+/// Result type for agent-id-core operations.
 pub type Result<T> = std::result::Result<T, Error>;

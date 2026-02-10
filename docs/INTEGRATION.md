@@ -53,14 +53,14 @@ Agent A                           Agent B
 
 ```toml
 [dependencies]
-aip-core = { git = "https://github.com/AustinEral/aip" }
-aip-handshake = { git = "https://github.com/AustinEral/aip" }
+agent-id-core = { git = "https://github.com/AustinEral/agent-id" }
+agent-id-handshake = { git = "https://github.com/AustinEral/agent-id" }
 ```
 
 ### Generate Identity
 
 ```rust
-use aip_core::RootKey;
+use agent_id_core::RootKey;
 
 // Generate new identity
 let key = RootKey::generate();
@@ -74,7 +74,7 @@ let key = RootKey::from_bytes(&seed)?;
 ### Create DID Document
 
 ```rust
-use aip_core::{RootKey, DidDocument};
+use agent_id_core::{RootKey, DidDocument};
 
 let key = RootKey::generate();
 
@@ -93,8 +93,8 @@ doc.verify()?;
 ### As Verifier (receiving Hello)
 
 ```rust
-use aip_handshake::protocol::Verifier;
-use aip_handshake::messages::Hello;
+use agent_id_handshake::protocol::Verifier;
+use agent_id_handshake::messages::Hello;
 
 let my_key = RootKey::generate();
 let verifier = Verifier::new(my_key.did());
@@ -118,8 +118,8 @@ println!("Verified: {}", hello.did);
 ### As Prover (sending Hello)
 
 ```rust
-use aip_handshake::messages::Hello;
-use aip_handshake::protocol::sign_proof;
+use agent_id_handshake::messages::Hello;
+use agent_id_handshake::protocol::sign_proof;
 
 let my_key = RootKey::generate();
 
@@ -140,7 +140,7 @@ let proof = sign_proof(&challenge, &my_key.did(), &my_key, None)?;
 ### Storing Keys
 
 ```rust
-use aip_core::RootKey;
+use agent_id_core::RootKey;
 
 // Get raw bytes for storage
 let key = RootKey::generate();
@@ -189,10 +189,10 @@ async fn handle_proof(proof: Proof, challenge: Challenge) -> ProofAccepted {
 Wrap AIP as MCP tools for agent frameworks:
 
 ```
-aip_whoami      → returns agent's DID
-aip_handshake   → authenticate with another agent
-aip_sign        → sign a message
-aip_verify      → verify a signature
+agent_id_whoami      → returns agent's DID
+agent_id_handshake   → authenticate with another agent
+agent_id_sign        → sign a message
+agent_id_verify      → verify a signature
 ```
 
 ---
@@ -200,4 +200,4 @@ aip_verify      → verify a signature
 ## Next Steps
 
 - [PROTOCOL.md](../spec/PROTOCOL.md) — Full protocol specification
-- [aip-trust](https://github.com/AustinEral/aip-trust) — Add trust/reputation (optional)
+- [aip-trust](https://github.com/AustinEral/agent-id-trust) — Add trust/reputation (optional)

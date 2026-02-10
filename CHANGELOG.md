@@ -7,59 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.1] - 2026-02-10
-
-### Added
-
-- **aip umbrella crate**: Single dependency for all AIP functionality
-  - `cargo add aip`
-  - Re-exports `aip-core` and `aip-handshake`
-  - Common types available at root: `RootKey`, `Did`, `DidDocument`
-
 ## [0.1.0] - 2026-02-10
 
 ### Added
 
-- **aip-core**: Core identity primitives
+- **agent-id umbrella crate**: Single dependency for all AIP functionality
+  - `cargo add agent-id`
+  - Re-exports `agent-id-core` and `agent-id-handshake`
+  - Common types available at root: `RootKey`, `Did`, `DidDocument`
+
+- **agent-id-core**: Core identity primitives
   - `RootKey`: Ed25519 keypair generation and management
   - `Did`: W3C did:key format identifiers
   - `DidDocument`: Signed DID documents with service endpoints
   - Canonical JSON signing (RFC 8785 JCS)
 
-- **aip-handshake**: Mutual authentication protocol
+- **agent-id-handshake**: Mutual authentication protocol
   - Challenge-response handshake
   - Proof verification with counter-challenges
   - Session establishment
 
-- **CLI**: Command-line tool
-  - `cargo run --bin aip -- identity generate`: Create new identity
-  - `cargo run --bin aip -- identity show`: Display current identity
-  - `cargo run --bin aip -- document create`: Generate signed DID document
-  - `cargo run --bin aip -- handshake test`: Test handshake between two agents
+- **CLI**: Command-line tool (`agent-id`)
+  - `agent-id identity generate`: Create new identity
+  - `agent-id identity show`: Display current identity
+  - `agent-id document create`: Generate signed DID document
+  - `agent-id handshake test`: Test handshake between two agents
 
 - **Documentation**
   - QUICKSTART.md: 5-minute getting started guide
   - INTEGRATION.md: How to add AIP to your agent
   - SECURITY.md: Security considerations
 
-### Changed
+### Notes
 
-- Migrated from custom `did:aip` format to W3C standard `did:key`
-  - Better interoperability with DID ecosystem
-  - Uses multicodec (0xed01) for Ed25519 keys
-  - Uses base58btc multibase encoding
+- Uses W3C standard `did:key` format for identifiers
+- Minimal dependencies, security-focused design
+- Trust layer available separately: [aip-trust](https://github.com/AustinEral/aip-trust)
 
-### Removed
-
-- Removed premature components (will be added in future releases):
-  - Services (resolver, relay, log)
-  - Transparency log infrastructure
-  - Trust layer (moved to [aip-trust](https://github.com/AustinEral/aip-trust))
-
-## Related Projects
-
-- [aip-trust](https://github.com/AustinEral/aip-trust) - Trust and reputation layer
-
-[Unreleased]: https://github.com/AustinEral/aip/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/AustinEral/aip/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/AustinEral/aip/releases/tag/v0.1.0
+[Unreleased]: https://github.com/AustinEral/agent-id/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/AustinEral/agent-id/releases/tag/v0.1.0

@@ -1,7 +1,7 @@
 //! AIP CLI - Agent Identity Protocol command-line tool.
 
-use aip_core::{Did, DidDocument, RootKey};
-use aip_handshake::{
+use agent_id_core::{Did, DidDocument, RootKey};
+use agent_id_handshake::{
     messages::{Hello, Proof, ProofAccepted},
     protocol::{sign_proof, verify_counter_proof, Verifier},
 };
@@ -15,10 +15,10 @@ use tokio::sync::Mutex;
 
 /// Agent Identity Protocol CLI
 #[derive(Parser)]
-#[command(name = "aip")]
+#[command(name = "agent-id")]
 #[command(about = "Agent Identity Protocol - verifiable agent identity", long_about = None)]
 struct Cli {
-    /// Path to identity file (default: ~/.aip/identity.json)
+    /// Path to identity file (default: ~/.agent-id/identity.json)
     #[arg(short, long, global = true)]
     identity: Option<PathBuf>,
 
@@ -139,7 +139,7 @@ fn get_identity_path(cli_path: Option<PathBuf>) -> Result<PathBuf> {
         return Ok(path);
     }
 
-    let proj_dirs = directories::ProjectDirs::from("ai", "aip", "aip")
+    let proj_dirs = directories::ProjectDirs::from("ai", "agent-id", "agent-id")
         .context("Could not determine config directory")?;
 
     let config_dir = proj_dirs.config_dir();
@@ -383,13 +383,13 @@ struct ServerState {
     key: RootKey,
     did: Did,
     verifier: Verifier,
-    pending_challenges: Mutex<std::collections::HashMap<String, aip_handshake::Challenge>>,
+    pending_challenges: Mutex<std::collections::HashMap<String, agent_id_handshake::Challenge>>,
 }
 
 async fn handle_hello(
     State(state): State<Arc<ServerState>>,
     Json(hello): Json<Hello>,
-) -> Result<Json<aip_handshake::Challenge>, (StatusCode, String)> {
+) -> Result<Json<agent_id_handshake::Challenge>, (StatusCode, String)> {
     println!("← Received Hello from {}", hello.did);
 
     let challenge = state
@@ -397,7 +397,7 @@ async fn handle_hello(
         .handle_hello(&hello)
         .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let challenge_hash = aip_handshake::protocol::hash_challenge(&challenge)
+    let challenge_hash = agent_id_handshake::protocol::hash_challenge(&challenge)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     state
@@ -487,7 +487,7 @@ async fn cmd_handshake_connect(path: PathBuf, url: String) -> Result<()> {
     let hello = Hello::new(my_did.to_string());
     println!("1. Sending Hello...");
 
-    let challenge: aip_handshake::Challenge = client
+    let challenge: agent_id_handshake::Challenge = client
         .post(format!("{}/hello", url))
         .json(&hello)
         .send()

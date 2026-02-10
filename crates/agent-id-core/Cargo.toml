@@ -1,11 +1,11 @@
 [package]
-name = "aip-core"
-version = "0.1.1"
+name = "agent-id-core"
+version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Core identity primitives for the Agent Identity Protocol"
-repository = "https://github.com/AustinEral/aip"
-documentation = "https://docs.rs/aip-core"
+repository = "https://github.com/AustinEral/agent-id"
+documentation = "https://docs.rs/agent-id-core"
 readme = "README.md"
 keywords = ["identity", "did", "authentication", "agent", "cryptography"]
 categories = ["authentication", "cryptography"]

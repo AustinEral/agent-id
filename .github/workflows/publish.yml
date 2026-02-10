@@ -17,20 +17,20 @@ jobs:
       
       - uses: dtolnay/rust-toolchain@stable
       
-      - name: Publish aip-core
-        run: cargo publish -p aip-core || echo 'aip-core already published or failed'
+      - name: Publish agent-id-core
+        run: cargo publish -p agent-id-core || echo 'agent-id-core already published or failed'
         continue-on-error: true
         
       - name: Wait for crates.io
         run: sleep 30
         
-      - name: Publish aip-handshake
-        run: cargo publish -p aip-handshake || echo 'aip-handshake already published or failed'
+      - name: Publish agent-id-handshake
+        run: cargo publish -p agent-id-handshake || echo 'agent-id-handshake already published or failed'
         continue-on-error: true
 
       - name: Wait for crates.io
         run: sleep 30
         
-      - name: Publish aip
-        run: cargo publish -p aip || echo 'aip already published or failed'
+      - name: Publish agent-id
+        run: cargo publish -p agent-id || echo 'agent-id already published or failed'
         continue-on-error: true

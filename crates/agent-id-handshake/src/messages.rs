@@ -1,6 +1,6 @@
 //! Handshake protocol message types.
 
-use aip_core::delegation::Delegation;
+use agent_id_core::delegation::Delegation;
 use serde::{Deserialize, Serialize};
 
 /// Protocol version.

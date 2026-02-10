@@ -1,6 +1,6 @@
-# aip-core
+# agent-id-core
 
-Core identity primitives for the [Agent Identity Protocol](https://github.com/AustinEral/aip).
+Core identity primitives for the [Agent Identity Protocol](https://github.com/AustinEral/agent-id).
 
 ## Features
 
@@ -12,7 +12,7 @@ Core identity primitives for the [Agent Identity Protocol](https://github.com/Au
 ## Usage
 
 ```rust
-use aip_core::RootKey;
+use agent_id_core::RootKey;
 
 let key = RootKey::generate();
 println!("DID: {}", key.did());

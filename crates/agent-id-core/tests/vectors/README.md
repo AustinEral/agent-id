@@ -43,4 +43,4 @@ for case in vectors.valid {
 
 ## Generating
 
-Run `cargo run --example gen_vectors -p aip-examples` to regenerate values.
+Run `cargo run --example gen_vectors -p agent-id-examples` to regenerate values.

@@ -21,4 +21,4 @@
 
 ## Related Projects
 
-- [aip-trust](https://github.com/AustinEral/aip-trust) — Trust and reputation layer
+- [aip-trust](https://github.com/AustinEral/agent-id-trust) — Trust and reputation layer

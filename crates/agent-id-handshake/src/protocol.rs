@@ -2,7 +2,7 @@
 
 use crate::error::{HandshakeError, Result};
 use crate::messages::{Challenge, CounterChallenge, CounterProof, Hello, Proof, ProofAccepted};
-use aip_core::{signing, Did, RootKey};
+use agent_id_core::{signing, Did, RootKey};
 use chrono::Utc;
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -126,7 +126,7 @@ impl Verifier {
                 .map_err(|_| HandshakeError::InvalidSignature)?,
         );
 
-        aip_core::keys::verify(&public_key, proof.challenge_hash.as_bytes(), &signature)?;
+        agent_id_core::keys::verify(&public_key, proof.challenge_hash.as_bytes(), &signature)?;
 
         Ok(())
     }
@@ -251,7 +251,7 @@ pub fn verify_counter_proof(
             .map_err(|_| HandshakeError::InvalidSignature)?,
     );
 
-    aip_core::keys::verify(
+    agent_id_core::keys::verify(
         &public_key,
         counter_proof.challenge_hash.as_bytes(),
         &signature,

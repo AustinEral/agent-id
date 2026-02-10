@@ -5,14 +5,14 @@ Cryptographic identity and mutual authentication for AI agents.
 ## Quick Start
 
 ```bash
-git clone https://github.com/AustinEral/aip.git
-cd aip
+git clone https://github.com/AustinEral/agent-id.git
+cd agent-id
 
 # Create an identity
-cargo run --bin aip -- identity generate
+cargo run --bin agent-id -- identity generate
 
 # Test a handshake between two agents
-cargo run --bin aip -- handshake test
+cargo run --bin agent-id -- handshake test
 
 # Run the example
 cargo run --example basic
@@ -28,12 +28,12 @@ cargo run --example basic
 
 ```toml
 [dependencies]
-aip-core = { git = "https://github.com/AustinEral/aip" }
-aip-handshake = { git = "https://github.com/AustinEral/aip" }
+agent-id-core = { git = "https://github.com/AustinEral/agent-id" }
+agent-id-handshake = { git = "https://github.com/AustinEral/agent-id" }
 ```
 
 ```rust
-use aip_core::RootKey;
+use agent_id_core::RootKey;
 
 // Generate identity
 let key = RootKey::generate();

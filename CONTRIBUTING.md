@@ -7,8 +7,8 @@ Thank you for your interest in contributing to the Agent Identity Protocol!
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/aip.git
-   cd aip
+   git clone https://github.com/YOUR_USERNAME/agent-id.git
+   cd agent-id
    ```
 3. Create a feature branch:
    ```bash
@@ -78,8 +78,8 @@ cargo test --all
 
 ```
 crates/
-├── aip-core/        # Identity primitives (DID, keys, signing)
-└── aip-handshake/   # Mutual authentication protocol
+├── agent-id-core/        # Identity primitives (DID, keys, signing)
+└── agent-id-handshake/   # Mutual authentication protocol
 
 cli/                 # Command-line tool
 examples/            # Usage examples

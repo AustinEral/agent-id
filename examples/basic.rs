@@ -7,9 +7,9 @@
 //!
 //! Run with: cargo run --example basic
 
-use aip_core::{DidDocument, RootKey};
-use aip_handshake::messages::Hello;
-use aip_handshake::protocol::{sign_proof, Verifier};
+use agent_id_core::{DidDocument, RootKey};
+use agent_id_handshake::messages::Hello;
+use agent_id_handshake::protocol::{sign_proof, Verifier};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== AIP Basic Example ===\n");

@@ -19,7 +19,7 @@ Security considerations and known issues.
 
 ### 1. Nonce Cache Memory Growth
 
-**Location:** `crates/aip-handshake/src/protocol.rs`
+**Location:** `crates/agent-id-handshake/src/protocol.rs`
 
 The nonce cache doesn't expire old entries. In long-running verifiers, memory will grow unbounded.
 
@@ -31,7 +31,7 @@ The nonce cache doesn't expire old entries. In long-running verifiers, memory wi
 
 ### 2. Session Keys Not Yet Implemented
 
-Handshake only accepts root key signatures. Session key delegation exists in `aip-core` but isn't used in verification yet.
+Handshake only accepts root key signatures. Session key delegation exists in `agent-id-core` but isn't used in verification yet.
 
 **Impact:** Root key must be used for every handshake instead of short-lived session keys.
 

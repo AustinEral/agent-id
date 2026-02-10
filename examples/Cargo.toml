@@ -1,12 +1,12 @@
 [package]
-name = "aip-examples"
+name = "agent-id-examples"
 version = "0.1.0"
 edition = "2021"
 publish = false
 
 [dependencies]
-aip-core = { path = "../crates/aip-core" }
-aip-handshake = { path = "../crates/aip-handshake" }
+agent-id-core = { path = "../crates/agent-id-core" }
+agent-id-handshake = { path = "../crates/agent-id-handshake" }
 
 [[example]]
 name = "basic"
