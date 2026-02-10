@@ -1,4 +1,16 @@
 //! Key management for AIP identities.
+//!
+//! # Security
+//!
+//! This module handles secret key material. Key security properties:
+//!
+//! - **Zeroization on drop**: Secret key bytes are automatically zeroed when
+//!   dropped. This is handled by `ed25519-dalek`'s `SigningKey` via its
+//!   `zeroize` feature, preventing leakage via memory dumps, swap files,
+//!   or cold boot attacks.
+//!
+//! - **No Debug leakage**: Keys implement Debug safely, showing only the
+//!   DID (public info), not secret material.
 
 use crate::{Did, Error, Result};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -12,9 +24,10 @@ use std::fmt;
 ///
 /// # Security
 ///
-/// The `Debug` implementation intentionally only shows the DID (derived from the
-/// public key) to prevent accidental exposure of key material in logs or error
-/// messages. Use `did()` to get the public identifier.
+/// - The inner `SigningKey` automatically zeroizes secret key bytes on drop
+///   (via ed25519-dalek's `zeroize` feature).
+/// - The `Debug` implementation only shows the DID (public info) to prevent
+///   accidental exposure of key material in logs.
 pub struct RootKey {
     signing_key: SigningKey,
 }
@@ -36,6 +49,11 @@ impl RootKey {
     }
 
     /// Create from existing bytes.
+    ///
+    /// # Security
+    ///
+    /// The caller should zeroize the source bytes after this call
+    /// if they are no longer needed.
     pub fn from_bytes(bytes: &[u8; 32]) -> Result<Self> {
         Ok(Self {
             signing_key: SigningKey::from_bytes(bytes),
@@ -57,7 +75,14 @@ impl RootKey {
         self.signing_key.sign(message)
     }
 
-    /// Get the secret key bytes (be careful with this!).
+    /// Get the secret key bytes.
+    ///
+    /// # Security Warning
+    ///
+    /// This returns raw secret key material. The caller is responsible for:
+    /// - Storing the bytes securely
+    /// - Zeroizing the bytes when no longer needed
+    /// - Not logging or printing these bytes
     pub fn to_bytes(&self) -> [u8; 32] {
         self.signing_key.to_bytes()
     }
@@ -69,9 +94,10 @@ impl RootKey {
 ///
 /// # Security
 ///
-/// The `Debug` implementation intentionally only shows the root DID and a
-/// fingerprint of the public key to prevent accidental exposure of key material
-/// in logs or error messages.
+/// - The inner `SigningKey` automatically zeroizes secret key bytes on drop.
+/// - Session keys should be short-lived and rotated frequently.
+/// - The `Debug` implementation only shows public info (root DID and pubkey
+///   fingerprint).
 pub struct SessionKey {
     signing_key: SigningKey,
     root_did: Did,
@@ -163,6 +189,15 @@ mod tests {
         let message = b"session message";
         let sig = session.sign(message);
         verify(&session.verifying_key(), message, &sig).unwrap();
+    }
+
+    #[test]
+    fn test_root_key_roundtrip() {
+        let root = RootKey::generate();
+        let bytes = root.to_bytes();
+        let restored = RootKey::from_bytes(&bytes).unwrap();
+
+        assert_eq!(root.did(), restored.did());
     }
 
     #[test]
