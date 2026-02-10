@@ -23,10 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Session establishment
 
 - **CLI**: Command-line tool
-  - `aip identity generate`: Create new identity
-  - `aip identity show`: Display current identity
-  - `aip document create`: Generate signed DID document
-  - `aip handshake test`: Test handshake between two agents
+  - `cargo run --bin aip -- identity generate`: Create new identity
+  - `cargo run --bin aip -- identity show`: Display current identity
+  - `cargo run --bin aip -- document create`: Generate signed DID document
+  - `cargo run --bin aip -- handshake test`: Test handshake between two agents
 
 - **Documentation**
   - QUICKSTART.md: 5-minute getting started guide
