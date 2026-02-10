@@ -1,6 +1,6 @@
 [package]
 name = "aip"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "Agent Identity Protocol - cryptographic identity and authentication for AI agents"
@@ -11,5 +11,5 @@ keywords = ["identity", "did", "authentication", "agent", "ai"]
 categories = ["authentication", "cryptography"]
 
 [dependencies]
-aip-core = { version = "0.1.0", path = "../aip-core" }
-aip-handshake = { version = "0.1.0", path = "../aip-handshake" }
+aip-core = { version = "0.1.1", path = "../aip-core" }
+aip-handshake = { version = "0.1.1", path = "../aip-handshake" }
