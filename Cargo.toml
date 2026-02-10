@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/aip",
     "crates/aip-core",
     "crates/aip-handshake",
     "cli",
@@ -14,37 +15,22 @@ license = "Apache-2.0"
 repository = "https://github.com/AustinEral/aip"
 
 [workspace.dependencies]
-# Crypto
 ed25519-dalek = { version = "2", features = ["rand_core", "zeroize"] }
 rand = "0.8"
 sha2 = "0.10"
 bs58 = "0.5"
 base64 = "0.22"
-
-# Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_json_canonicalizer = "0.2"
 hex = "0.4"
-
-# Async
 tokio = { version = "1", features = ["full"] }
-
-# Error handling
 thiserror = "2"
 anyhow = "1"
-
-# Time
 chrono = { version = "0.4", features = ["serde"] }
-
-# UUID
 uuid = { version = "1", features = ["v7", "serde"] }
-
-# Web
 axum = "0.7"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors"] }
-
-# Logging
 tracing = "0.1"
 tracing-subscriber = "0.3"
