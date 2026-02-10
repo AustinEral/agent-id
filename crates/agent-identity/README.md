@@ -1,17 +1,17 @@
-# aip
+# agent-identity
 
 Agent Identity Protocol - cryptographic identity and authentication for AI agents.
 
 ## Installation
 
 ```bash
-cargo add aip
+cargo add agent-identity
 ```
 
 ## Usage
 
 ```rust
-use aip::{RootKey, Did};
+use agent_identity::{RootKey, Did};
 
 // Generate an identity
 let key = RootKey::generate();
@@ -19,7 +19,7 @@ println!("DID: {}", key.did());
 // did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y
 
 // Perform a handshake
-use aip::handshake::protocol::Verifier;
+use agent_identity::handshake::protocol::Verifier;
 let verifier = Verifier::new(key.did());
 ```
 

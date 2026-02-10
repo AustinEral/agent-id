@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/aip",
+    "crates/agent-identity",
     "crates/aip-core",
     "crates/aip-handshake",
     "cli",

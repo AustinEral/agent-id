@@ -1,11 +1,11 @@
 [package]
-name = "aip"
+name = "agent-identity"
 version = "0.1.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "Agent Identity Protocol - cryptographic identity and authentication for AI agents"
 repository = "https://github.com/AustinEral/aip"
-documentation = "https://docs.rs/aip"
+documentation = "https://docs.rs/agent-identity"
 readme = "README.md"
 keywords = ["identity", "did", "authentication", "agent", "ai"]
 categories = ["authentication", "cryptography"]
