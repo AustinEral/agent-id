@@ -139,9 +139,8 @@ fn load_test_key(seed_hex: &str) -> RootKey {
 
 #[test]
 fn test_key_derivation() {
-    let vectors: SignatureVectors =
-        serde_json::from_str(include_str!("vectors/signatures.json"))
-            .expect("Failed to parse vectors");
+    let vectors: SignatureVectors = serde_json::from_str(include_str!("vectors/signatures.json"))
+        .expect("Failed to parse vectors");
 
     // Verify Agent A
     let key_a = load_test_key(&vectors.test_keys.agent_a.seed_hex);
@@ -162,9 +161,8 @@ fn test_key_derivation() {
 
 #[test]
 fn test_valid_signatures() {
-    let vectors: SignatureVectors =
-        serde_json::from_str(include_str!("vectors/signatures.json"))
-            .expect("Failed to parse vectors");
+    let vectors: SignatureVectors = serde_json::from_str(include_str!("vectors/signatures.json"))
+        .expect("Failed to parse vectors");
 
     let key_a = load_test_key(&vectors.test_keys.agent_a.seed_hex);
 
@@ -190,14 +188,16 @@ fn test_valid_signatures() {
 
 #[test]
 fn test_invalid_signatures() {
-    let vectors: SignatureVectors =
-        serde_json::from_str(include_str!("vectors/signatures.json"))
-            .expect("Failed to parse vectors");
+    let vectors: SignatureVectors = serde_json::from_str(include_str!("vectors/signatures.json"))
+        .expect("Failed to parse vectors");
 
     for case in vectors.invalid_signatures {
         assert!(case.should_fail, "Test case must be expected to fail");
 
-        let did: Did = case.claimed_signer_did.parse().expect("Invalid DID in test case");
+        let did: Did = case
+            .claimed_signer_did
+            .parse()
+            .expect("Invalid DID in test case");
         let public_key = did.public_key().expect("Invalid public key");
 
         let sig_bytes = hex::decode(&case.signature_hex).unwrap_or_default();
@@ -260,9 +260,8 @@ struct ErrorCase {
 
 #[test]
 fn test_handshake_vectors_parse() {
-    let vectors: HandshakeVectors =
-        serde_json::from_str(include_str!("vectors/handshake.json"))
-            .expect("Failed to parse handshake vectors");
+    let vectors: HandshakeVectors = serde_json::from_str(include_str!("vectors/handshake.json"))
+        .expect("Failed to parse handshake vectors");
 
     // Verify we have the expected message flow
     assert_eq!(vectors.message_flow.len(), 4, "Expected 4 handshake steps");
@@ -280,7 +279,11 @@ fn test_handshake_vectors_parse() {
 
     // Verify error cases are documented
     assert!(!vectors.error_cases.is_empty(), "Should have error cases");
-    let error_names: Vec<_> = vectors.error_cases.iter().map(|e| e.name.as_str()).collect();
+    let error_names: Vec<_> = vectors
+        .error_cases
+        .iter()
+        .map(|e| e.name.as_str())
+        .collect();
     assert!(error_names.contains(&"replay_attack"));
     assert!(error_names.contains(&"timestamp_too_old"));
     assert!(error_names.contains(&"wrong_signature"));
