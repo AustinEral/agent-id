@@ -1,64 +1,59 @@
 {
-  "description": "DID parsing test vectors for AIP",
-  "version": "1.0",
+  "description": "DID parsing test vectors for AIP (did:key format)",
+  "version": "2.0",
   "valid": [
     {
       "description": "Agent A - seed [1, 0, 0, ...]",
-      "input": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "input": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
       "expected": {
-        "version": 1,
-        "public_key_base58": "EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb"
+        "key_id": "z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y"
       }
     },
     {
       "description": "Agent B - seed [2, 0, 0, ...]",
-      "input": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
+      "input": "did:key:z6MkmgoN6DceCkjksTeZo42bhE9MdUpKSfdehRSfrWR9AQPV",
       "expected": {
-        "version": 1,
-        "public_key_base58": "8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7"
+        "key_id": "z6MkmgoN6DceCkjksTeZo42bhE9MdUpKSfdehRSfrWR9AQPV"
+      }
+    },
+    {
+      "description": "Known test vector from did:key spec",
+      "input": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+      "expected": {
+        "key_id": "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
       }
     }
   ],
   "invalid": [
     {
-      "description": "Wrong prefix - missing did scheme",
-      "input": "aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
-      "error_contains": "expected 4 parts"
+      "description": "Wrong prefix - old did:aip format",
+      "input": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "error_contains": "did:key"
     },
     {
-      "description": "Wrong method - not aip",
-      "input": "did:key:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
-      "error_contains": "method must be"
+      "description": "Wrong multibase prefix - not z (base58btc)",
+      "input": "did:key:f6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
+      "error_contains": "base58btc"
     },
     {
-      "description": "Invalid version - not numeric",
-      "input": "did:aip:x:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
-      "error_contains": "invalid version"
-    },
-    {
-      "description": "Missing parts - only 3 segments",
-      "input": "did:aip:1",
-      "error_contains": "expected 4 parts"
-    },
-    {
-      "description": "Too many parts - 5 segments",
-      "input": "did:aip:1:abc:extra",
-      "error_contains": "expected 4 parts"
-    },
-    {
-      "description": "Invalid base58 - contains invalid char",
-      "input": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TN0",
+      "description": "Invalid base58 - contains invalid char (0)",
+      "input": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg90",
       "error_contains": "base58"
     },
     {
-      "description": "Wrong key length - too short",
-      "input": "did:aip:1:EvFUfis",
-      "error_contains": "32 bytes"
+      "description": "Wrong multicodec - not Ed25519",
+      "input": "did:key:z2J9gaYxrKVpdoG9A4gRnmpnRCcxU6agDtFVVBVdn1JedouoZN7SzcyREXXzWgt3gGiwpoHq7K68X4m32D8HgzG8wv3sY5j7",
+      "error_contains": "bytes"
     },
     {
-      "description": "Empty key",
-      "input": "did:aip:1:",
-      "error_contains": "32 bytes"
+      "description": "Too short - truncated key",
+      "input": "did:key:z6Mkt",
+      "error_contains": "34 bytes"
+    },
+    {
+      "description": "Empty key portion",
+      "input": "did:key:z",
+      "error_contains": "34 bytes"
     }
   ]
 }

@@ -42,7 +42,7 @@ fn main() -> Result<(), aip_core::Error> {
     let did = root_key.did();
     
     println!("Your DID: {}", did);
-    // did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+    // did:key:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
     
     Ok(())
 }
@@ -151,7 +151,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 | Concept | Description |
 |---------|-------------|
-| **DID** | `did:aip:1:<pubkey>` — Self-certifying identifier |
+| **DID** | `did:key:<pubkey>` — Self-certifying identifier |
 | **RootKey** | Ed25519 keypair defining identity |
 | **DidDocument** | Signed JSON describing how to interact with an agent |
 | **Handshake** | Challenge-response proving identity ownership |

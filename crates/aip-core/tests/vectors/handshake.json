@@ -1,15 +1,15 @@
 {
   "description": "Handshake protocol test vectors for AIP",
-  "version": "1.0",
+  "version": "2.0",
   "note": "These vectors use the test keys from signatures.json",
   "test_keys": {
     "initiator": {
       "seed_hex": "0100000000000000000000000000000000000000000000000000000000000000",
-      "did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb"
+      "did": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y"
     },
     "responder": {
       "seed_hex": "0200000000000000000000000000000000000000000000000000000000000000",
-      "did": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7"
+      "did": "did:key:z6MkmgoN6DceCkjksTeZo42bhE9MdUpKSfdehRSfrWR9AQPV"
     }
   },
   "message_flow": [
@@ -20,8 +20,8 @@
       "description": "Initiator announces intent to authenticate",
       "fields": {
         "type": "Hello",
-        "version": "1.0",
-        "did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+        "version": "2.0",
+        "did": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
         "timestamp": "TIMESTAMP_PLACEHOLDER"
       },
       "validation": [
@@ -37,9 +37,9 @@
       "description": "Responder issues cryptographic challenge",
       "fields": {
         "type": "Challenge",
-        "version": "1.0",
-        "issuer": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
-        "audience": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+        "version": "2.0",
+        "issuer": "did:key:z6MkmgoN6DceCkjksTeZo42bhE9MdUpKSfdehRSfrWR9AQPV",
+        "audience": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
         "nonce": "UUID_PLACEHOLDER",
         "timestamp": "TIMESTAMP_PLACEHOLDER"
       },
@@ -56,14 +56,14 @@
       "description": "Initiator proves identity by signing challenge",
       "fields": {
         "type": "Proof",
-        "version": "1.0",
+        "version": "2.0",
         "challenge_hash": "sha256:HASH_PLACEHOLDER",
-        "responder_did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
-        "signing_key": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb#root",
+        "responder_did": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y",
+        "signing_key": "did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y#root",
         "signature": "BASE64_SIGNATURE_PLACEHOLDER",
         "counter_challenge": {
           "type": "CounterChallenge",
-          "audience": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
+          "audience": "did:key:z6MkmgoN6DceCkjksTeZo42bhE9MdUpKSfdehRSfrWR9AQPV",
           "nonce": "UUID_PLACEHOLDER",
           "timestamp": "TIMESTAMP_PLACEHOLDER"
         }
@@ -81,12 +81,12 @@
       "description": "Responder confirms and provides counter-proof",
       "fields": {
         "type": "ProofAccepted",
-        "version": "1.0",
+        "version": "2.0",
         "session_id": "UUID_PLACEHOLDER",
         "counter_proof": {
           "challenge_hash": "sha256:HASH_PLACEHOLDER",
-          "responder_did": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
-          "signing_key": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7#root",
+          "responder_did": "did:key:z6MkmgoN6DceCkjksTeZo42bhE9MdUpKSfdehRSfrWR9AQPV",
+          "signing_key": "did:key:z6MkmgoN6DceCkjksTeZo42bhE9MdUpKSfdehRSfrWR9AQPV#root",
           "signature": "BASE64_SIGNATURE_PLACEHOLDER"
         },
         "session_expires_at": "TIMESTAMP_PLACEHOLDER"

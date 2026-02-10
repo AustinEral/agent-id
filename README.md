@@ -39,7 +39,7 @@ use aip_core::{RootKey, DidDocument};
 // Your agent's identity
 let key = RootKey::generate();
 println!("{}", key.did());
-// → did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt
+// → did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y
 ```
 
 ## Documentation

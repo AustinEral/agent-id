@@ -34,27 +34,27 @@ GET /did/:did
 ```
 
 Parameters:
-- `did` — The DID to resolve (e.g., `did:aip:1:7Tqg2...`)
+- `did` — The DID to resolve (e.g., `did:key:7Tqg2...`)
 
 Response (200):
 ```json
 {
-  "id": "did:aip:1:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt",
+  "id": "did:key:7Tqg2HjqE8vNrJZpVfYxKdMW3nCsB9aR6zLmPwXyQcSt",
   "verificationMethod": [{
-    "id": "did:aip:1:7Tqg2...#root",
+    "id": "did:key:7Tqg2...#root",
     "type": "Ed25519VerificationKey2020",
-    "controller": "did:aip:1:7Tqg2...",
+    "controller": "did:key:7Tqg2...",
     "publicKeyMultibase": "z6Mky..."
   }],
   "service": [{
-    "id": "did:aip:1:7Tqg2...#handshake",
+    "id": "did:key:7Tqg2...#handshake",
     "type": "AIPHandshake",
     "serviceEndpoint": "https://agent.example/aip/handshake"
   }],
   "proof": {
     "type": "Ed25519Signature2020",
     "created": "2026-02-06T00:00:00Z",
-    "verificationMethod": "did:aip:1:7Tqg2...#root",
+    "verificationMethod": "did:key:7Tqg2...#root",
     "proofValue": "base64..."
   }
 }
@@ -72,7 +72,7 @@ POST /did
 Content-Type: application/json
 
 {
-  "id": "did:aip:1:...",
+  "id": "did:key:...",
   "verificationMethod": [...],
   "service": [...],
   "proof": {...}
@@ -81,7 +81,7 @@ Content-Type: application/json
 
 Response (201):
 ```json
-{"status": "registered", "did": "did:aip:1:..."}
+{"status": "registered", "did": "did:key:..."}
 ```
 
 Response (400):
@@ -112,7 +112,7 @@ Response:
 {
   "size": 1234,
   "rootHash": "sha256:abc123...",
-  "operatorDid": "did:aip:1:..."
+  "operatorDid": "did:key:..."
 }
 ```
 
@@ -131,7 +131,7 @@ Response:
   "sequence": 42,
   "timestamp": "2026-02-06T00:00:00Z",
   "eventType": "document_updated",
-  "subjectDid": "did:aip:1:...",
+  "subjectDid": "did:key:...",
   "payload": {...},
   "previousHash": "sha256:...",
   "entryHash": "sha256:...",
@@ -156,7 +156,7 @@ Content-Type: application/json
 
 {
   "eventType": "document_updated",
-  "subjectDid": "did:aip:1:...",
+  "subjectDid": "did:key:...",
   "payload": {...},
   "subjectSignature": "base64..."
 }
@@ -229,8 +229,8 @@ Content-Type: application/json
   "type": "TrustStatement",
   "version": "1.0",
   "id": "uuid",
-  "issuer": "did:aip:1:...",
-  "subject": "did:aip:1:...",
+  "issuer": "did:key:...",
+  "subject": "did:key:...",
   "timestamp": "2026-02-06T00:00:00Z",
   "assessment": {
     "overallTrust": 0.85,
@@ -258,9 +258,9 @@ Response (429):
 ### Query Trust Statements
 
 ```http
-GET /trust/statements?issuer=did:aip:1:...
-GET /trust/statements?subject=did:aip:1:...
-GET /trust/statements?issuer=did:aip:1:...&subject=did:aip:1:...
+GET /trust/statements?issuer=did:key:...
+GET /trust/statements?subject=did:key:...
+GET /trust/statements?issuer=did:key:...&subject=did:key:...
 ```
 
 At least one of `issuer` or `subject` is required.
@@ -270,8 +270,8 @@ Response:
 [
   {
     "type": "TrustStatement",
-    "issuer": "did:aip:1:...",
-    "subject": "did:aip:1:...",
+    "issuer": "did:key:...",
+    "subject": "did:key:...",
     "assessment": {...},
     "signature": {...}
   }
@@ -287,8 +287,8 @@ Content-Type: application/json
 {
   "type": "BlockStatement",
   "version": "1.0",
-  "issuer": "did:aip:1:...",
-  "subject": "did:aip:1:...",
+  "issuer": "did:key:...",
+  "subject": "did:key:...",
   "reason": "spam",
   "severity": "permanent",
   "signature": {...}
@@ -317,7 +317,7 @@ Response:
 ### Get Trust Graph
 
 ```http
-GET /trust/graph?center=did:aip:1:...&depth=2
+GET /trust/graph?center=did:key:...&depth=2
 ```
 
 Parameters:
@@ -327,13 +327,13 @@ Parameters:
 Response:
 ```json
 {
-  "center": "did:aip:1:...",
+  "center": "did:key:...",
   "depth": 2,
-  "nodes": ["did:aip:1:A...", "did:aip:1:B...", "did:aip:1:C..."],
+  "nodes": ["did:key:A...", "did:key:B...", "did:key:C..."],
   "edges": [
     {
-      "issuer": "did:aip:1:A...",
-      "subject": "did:aip:1:B...",
+      "issuer": "did:key:A...",
+      "subject": "did:key:B...",
       "trustScore": 0.9,
       "timestamp": 1707177600000
     }
@@ -353,7 +353,7 @@ use aip_log::LogClient;
 
 // Resolver
 let resolver = ResolverClient::new("http://localhost:8080");
-let doc = resolver.resolve("did:aip:1:...").await?;
+let doc = resolver.resolve("did:key:...").await?;
 resolver.register(&signed_doc).await?;
 
 // Log
@@ -366,13 +366,13 @@ let proof = log.get_proof(42).await?;
 
 ```bash
 # Resolve a DID
-curl http://localhost:8080/did/did:aip:1:7Tqg2...
+curl http://localhost:8080/did/did:key:7Tqg2...
 
 # Get log entry
 curl http://localhost:8081/log/entry/42
 
 # Query trust statements
-curl "http://localhost:8082/trust/statements?issuer=did:aip:1:..."
+curl "http://localhost:8082/trust/statements?issuer=did:key:..."
 ```
 
 ---

@@ -163,7 +163,7 @@ mod tests {
         let mut doc = DidDocument::new(&key).sign(&key).unwrap();
 
         // Tamper with document
-        doc.controller = "did:aip:1:EVIL".to_string();
+        doc.controller = "did:key:EVIL".to_string();
 
         // Should reject
         assert!(resolver.register(doc).is_err());
@@ -173,7 +173,7 @@ mod tests {
     fn test_not_found() {
         let resolver = Resolver::new();
 
-        let result = resolver.resolve("did:aip:1:nonexistent");
+        let result = resolver.resolve("did:key:nonexistent");
         assert!(matches!(result, Err(ResolverError::NotFound(_))));
     }
 
