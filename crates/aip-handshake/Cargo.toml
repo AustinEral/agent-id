@@ -1,18 +1,23 @@
 [package]
 name = "aip-handshake"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
 description = "Handshake protocol for the Agent Identity Protocol"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
+repository = "https://github.com/AustinEral/aip"
+documentation = "https://docs.rs/aip-handshake"
+readme = "README.md"
+keywords = ["identity", "authentication", "handshake", "agent", "did"]
+categories = ["authentication", "cryptography"]
 
 [dependencies]
-aip-core = { path = "../aip-core" }
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-chrono.workspace = true
-uuid.workspace = true
-base64.workspace = true
-ed25519-dalek.workspace = true
+aip-core = { version = "0.1.0", path = "../aip-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v7", "serde"] }
+base64 = "0.22"
+ed25519-dalek = "2"
 getrandom = "0.3"
 hex = "0.4"
