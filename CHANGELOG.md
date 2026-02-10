@@ -31,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**
   - QUICKSTART.md: 5-minute getting started guide
   - INTEGRATION.md: How to add AIP to your agent
-  - API.md: HTTP API reference
   - SECURITY.md: Security considerations
 
 ### Changed
