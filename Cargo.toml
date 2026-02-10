@@ -21,7 +21,7 @@ repository = "https://github.com/AustinEral/aip"
 
 [workspace.dependencies]
 # Crypto
-ed25519-dalek = { version = "2", features = ["rand_core"] }
+ed25519-dalek = { version = "2", features = ["rand_core", "zeroize"] }
 rand = "0.8"
 sha2 = "0.10"
 bs58 = "0.5"
