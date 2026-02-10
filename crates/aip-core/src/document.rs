@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VerificationMethod {
-    /// Full ID of this key (e.g., "did:aip:1:...#root")
+    /// Full ID of this key (e.g., "did:key:z6Mk...#root")
     pub id: String,
     /// Key type
     #[serde(rename = "type")]
@@ -26,7 +26,7 @@ pub struct VerificationMethod {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Service {
-    /// Service ID (e.g., "did:aip:1:...#handshake")
+    /// Service ID (e.g., "did:key:z6Mk...#handshake")
     pub id: String,
     /// Service type
     #[serde(rename = "type")]
@@ -214,7 +214,7 @@ mod tests {
         let key = RootKey::generate();
         let doc = DidDocument::new(&key);
 
-        assert!(doc.id.starts_with("did:aip:1:"));
+        assert!(doc.id.starts_with("did:key:z6Mk"));
         assert_eq!(doc.verification_method.len(), 1);
         assert!(doc.proof.is_none());
     }
@@ -237,7 +237,7 @@ mod tests {
         let mut doc = DidDocument::new(&key).sign(&key).unwrap();
 
         // Tamper with the document
-        doc.controller = "did:aip:1:ATTACKER".to_string();
+        doc.controller = "did:key:z6MkATTACKER".to_string();
 
         // Verification should fail
         assert!(doc.verify().is_err());

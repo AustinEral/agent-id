@@ -167,7 +167,7 @@ mod tests {
     fn test_root_key_generation() {
         let root = RootKey::generate();
         let did = root.did();
-        assert!(did.to_string().starts_with("did:aip:1:"));
+        assert!(did.to_string().starts_with("did:key:z6Mk"));
     }
 
     #[test]
@@ -206,7 +206,7 @@ mod tests {
         let debug_output = format!("{:?}", root);
 
         // Should contain the DID (public info)
-        assert!(debug_output.contains("did:aip:1:"));
+        assert!(debug_output.contains("did:key:z6Mk"));
 
         // Should NOT contain any of these patterns that would indicate leaked key material
         assert!(

@@ -25,6 +25,7 @@ ed25519-dalek = { version = "2", features = ["rand_core", "zeroize"] }
 rand = "0.8"
 sha2 = "0.10"
 bs58 = "0.5"
+multibase = "0.9"
 base64 = "0.22"
 
 # Serialization

@@ -107,7 +107,7 @@ impl InteractionContext {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticipantSignature {
-    /// Key used to sign (e.g., "did:aip:1:...#session-1").
+    /// Key used to sign (e.g., "did:key:z6Mk...#session-1").
     pub key: String,
 
     /// Base64-encoded signature.

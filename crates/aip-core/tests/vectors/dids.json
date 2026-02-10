@@ -1,64 +1,34 @@
 {
-  "description": "DID parsing test vectors for AIP",
-  "version": "1.0",
+  "description": "DID parsing test vectors for did:key method",
   "valid": [
     {
-      "description": "Agent A - seed [1, 0, 0, ...]",
-      "input": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "description": "Valid Ed25519 did:key",
+      "input": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
       "expected": {
-        "version": 1,
-        "public_key_base58": "EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb"
-      }
-    },
-    {
-      "description": "Agent B - seed [2, 0, 0, ...]",
-      "input": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
-      "expected": {
-        "version": 1,
-        "public_key_base58": "8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7"
+        "key_id_prefix": "z6Mk"
       }
     }
   ],
   "invalid": [
     {
-      "description": "Wrong prefix - missing did scheme",
-      "input": "aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
-      "error_contains": "expected 4 parts"
+      "description": "Wrong method",
+      "input": "did:web:example.com",
+      "error_contains": "method must be 'key'"
     },
     {
-      "description": "Wrong method - not aip",
-      "input": "did:key:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
-      "error_contains": "method must be"
+      "description": "Missing key part",
+      "input": "did:key:",
+      "error_contains": "multibase"
     },
     {
-      "description": "Invalid version - not numeric",
-      "input": "did:aip:x:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
-      "error_contains": "invalid version"
+      "description": "Invalid multibase",
+      "input": "did:key:notvalidbase",
+      "error_contains": "multibase"
     },
     {
-      "description": "Missing parts - only 3 segments",
-      "input": "did:aip:1",
-      "error_contains": "expected 4 parts"
-    },
-    {
-      "description": "Too many parts - 5 segments",
-      "input": "did:aip:1:abc:extra",
-      "error_contains": "expected 4 parts"
-    },
-    {
-      "description": "Invalid base58 - contains invalid char",
-      "input": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TN0",
-      "error_contains": "base58"
-    },
-    {
-      "description": "Wrong key length - too short",
-      "input": "did:aip:1:EvFUfis",
-      "error_contains": "32 bytes"
-    },
-    {
-      "description": "Empty key",
-      "input": "did:aip:1:",
-      "error_contains": "32 bytes"
+      "description": "Wrong multicodec prefix",
+      "input": "did:key:z7a8b9c",
+      "error_contains": "multicodec"
     }
   ]
 }
