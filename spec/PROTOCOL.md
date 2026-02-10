@@ -249,7 +249,7 @@ Agent A                                          Agent B
   "nonce": "random_32_bytes_base64",
   "timestamp": 1738800000000,
   "audience": "did:key:z6MkA...",
-  "issuer": "did:aip:1:B...",
+  "issuer": "did:key:z6MkB...",
   "domain": "trust.aip.network",
   "session_pubkey": "base58(...)",
   "delegation": { ... }
@@ -269,7 +269,7 @@ Agent A                                          Agent B
   "counter_challenge": {
     "nonce": "random_32_bytes_base64",
     "timestamp": 1738800000100,
-    "audience": "did:aip:1:B..."
+    "audience": "did:key:z6MkB..."
   }
 }
 ```
@@ -461,7 +461,7 @@ A signed record of an interaction between two agents.
   "type": "InteractionReceipt",
   "version": "1.0",
   "id": "uuid-v7",
-  "participants": ["did:key:z6MkA...", "did:aip:1:B..."],
+  "participants": ["did:key:z6MkA...", "did:key:z6MkB..."],
   "initiator": "did:key:z6MkA...",
   "timestamp": 1738800000000,
   "context": {
@@ -478,8 +478,8 @@ A signed record of an interaction between two agents.
       "sig": "base64(...)",
       "signed_at": 1738800000100
     },
-    "did:aip:1:B...": {
-      "key": "did:aip:1:B...#session-1", 
+    "did:key:z6MkB...": {
+      "key": "did:key:z6MkB...#session-1", 
       "sig": "base64(...)",
       "signed_at": 1738800000200
     }
@@ -505,7 +505,7 @@ An agent's subjective assessment of another agent.
   "version": "1.0",
   "id": "uuid-v7",
   "issuer": "did:key:z6MkA...",
-  "subject": "did:aip:1:B...",
+  "subject": "did:key:z6MkB...",
   "timestamp": 1738800000000,
   "assessment": {
     "overall_trust": 0.85,
@@ -541,7 +541,7 @@ An agent's subjective assessment of another agent.
   "version": "1.0",
   "id": "uuid-v7",
   "issuer": "did:key:z6MkA...",
-  "subject": "did:aip:1:B...",
+  "subject": "did:key:z6MkB...",
   "timestamp": 1738800000000,
   "reason": "spam",
   "severity": "permanent",
@@ -619,8 +619,8 @@ Optional shared infrastructure for publishing trust statements.
 **Query API:**
 ```
 GET /trust/statements?issuer=did:key:z6MkA...
-GET /trust/statements?subject=did:aip:1:B...
-GET /trust/statements?issuer=did:key:z6MkA...&subject=did:aip:1:B...
+GET /trust/statements?subject=did:key:z6MkB...
+GET /trust/statements?issuer=did:key:z6MkA...&subject=did:key:z6MkB...
 GET /trust/graph?center=did:key:z6MkA...&depth=2
 ```
 
@@ -702,7 +702,7 @@ POST /avatars/bind
   { agent_did, collection_id, token_id, signature }
   → { binding, attestation }
 
-GET /avatars/binding?did=did:aip:1:...
+GET /avatars/binding?did=did:key:...
   → { avatar, binding, attestation }
 
 GET /avatars/binding?collection=aip-genesis&token=847
@@ -853,7 +853,7 @@ Agent A                          Registry                         Agent B
 
 ### Phase 1: Core Protocol (Weeks 1-6)
 
-- [ ] DID method specification (`did:aip`)
+- [ ] DID method: using did:key (W3C CCG)
 - [ ] Ed25519 key management library
 - [ ] Handshake protocol implementation
 - [ ] JCS canonicalization + signing
@@ -901,7 +901,7 @@ Agent A                          Registry                         Agent B
 
 | Component | Standard | Notes |
 |-----------|----------|-------|
-| Identifier | W3C DID Core | Custom `did:aip` method |
+| Identifier | W3C DID Core | W3C `did:key` method |
 | Identity doc | W3C DID Document | Standard structure |
 | Credentials | W3C VC Data Model 2.0 | For attestations |
 | Signatures | Ed25519 / EdDSA | RFC 8032 |
@@ -914,9 +914,9 @@ Agent A                          Registry                         Agent B
 
 ## Open Questions (With Positions)
 
-### 1. DID method: custom `did:aip` or existing `did:key`?
+### 1. DID method: which DID method to use?
 
-**Position:** Custom `did:aip` from day one.
+**Position:** Using standard `did:key`.
 - Enables protocol-specific features (session keys, delegation)
 - Implies resolution infrastructure exists
 - Can embed `did:key` for offline fallback
@@ -997,7 +997,7 @@ Content-Type: application/json
 {
   "type": "Hello",
   "version": "1.0",
-  "did": "did:aip:1:7TqgA...",
+  "did": "did:key:z6MkA...",
   "protocols": ["aip/1.0"],
   "timestamp": 1738800000000
 }
@@ -1013,8 +1013,8 @@ Content-Type: application/json
   "version": "1.0",
   "nonce": "xK9m2nP...",
   "timestamp": 1738800000050,
-  "audience": "did:aip:1:7TqgA...",
-  "issuer": "did:aip:1:8RthB...",
+  "audience": "did:key:z6MkA...",
+  "issuer": "did:key:z6MkB...",
   "session_pubkey": "z6Mkx...",
   "delegation": { ... }
 }
@@ -1030,14 +1030,14 @@ Content-Type: application/json
   "type": "Proof",
   "version": "1.0",
   "challenge_hash": "sha256:abc123...",
-  "responder_did": "did:aip:1:7TqgA...",
-  "signing_key": "did:aip:1:7TqgA...#session-1",
+  "responder_did": "did:key:z6MkA...",
+  "signing_key": "did:key:z6MkA...#session-1",
   "signature": "base64...",
   "delegation": { ... },
   "counter_challenge": {
     "nonce": "yL0n3qR...",
     "timestamp": 1738800000100,
-    "audience": "did:aip:1:8RthB..."
+    "audience": "did:key:z6MkB..."
   }
 }
 ```
@@ -1053,8 +1053,8 @@ Content-Type: application/json
   "session_id": "uuid...",
   "counter_proof": {
     "challenge_hash": "sha256:def456...",
-    "responder_did": "did:aip:1:8RthB...",
-    "signing_key": "did:aip:1:8RthB...#session-1",
+    "responder_did": "did:key:z6MkB...",
+    "signing_key": "did:key:z6MkB...#session-1",
     "signature": "base64..."
   },
   "session_expires_at": 1738886400000
