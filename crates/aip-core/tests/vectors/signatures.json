@@ -1,0 +1,58 @@
+{
+  "description": "Signature verification test vectors for AIP",
+  "version": "1.0",
+  "note": "Seeds are well-known test values (NOT secret). Use ed25519-dalek SigningKey::from_bytes().",
+  "test_keys": {
+    "agent_a": {
+      "seed_hex": "0100000000000000000000000000000000000000000000000000000000000000",
+      "did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "public_key_base58": "EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb"
+    },
+    "agent_b": {
+      "seed_hex": "0200000000000000000000000000000000000000000000000000000000000000",
+      "did": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
+      "public_key_base58": "8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7"
+    }
+  },
+  "valid_signatures": [
+    {
+      "description": "Agent A signs canonical test message",
+      "signer": "agent_a",
+      "message": "AIP test vector message",
+      "message_hex": "414950207465737420766563746f72206d657373616765",
+      "signature_base64": "4I8ygZQqgmXg9kbxYh+68U6nDeQVPhYWFlTuUani2SHs3ByZvUG2EQdsV8ZUQLK7CrtY20U9uIti8dNRO9alAw==",
+      "signature_hex": "e08f3281942a8265e0f646f1621fbaf14ea70de4153e16161654ee51a9e2d921ecdc1c99bd41b611076c57c65440b2bb0abb58db453db88b62f1d3513bd6a503"
+    },
+    {
+      "description": "Agent A signs empty message",
+      "signer": "agent_a",
+      "message": "",
+      "message_hex": "",
+      "signature_base64": "bJ5T2c82txwpUCNflUreABGChckyCdB8mKzISWq1+kyIsZfQzkbfNAIlOxodMY4mSJPwM7Ub+Z/+/0LrSk1DAg==",
+      "signature_hex": "6c9e53d9cf36b71c2950235f954ade00118285c93209d07c98acc8496ab5fa4c88b197d0ce46df3402253b1a1d318e264893f033b51bf99ffeff42eb4a4d4302"
+    }
+  ],
+  "invalid_signatures": [
+    {
+      "description": "All-zeros signature should fail",
+      "message": "AIP test vector message",
+      "claimed_signer_did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "signature_hex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "should_fail": true
+    },
+    {
+      "description": "Truncated signature (32 bytes instead of 64)",
+      "message": "AIP test vector message",
+      "claimed_signer_did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "signature_hex": "e08f3281942a8265e0f646f1621fbaf14ea70de4153e16161654ee51a9e2d921",
+      "should_fail": true
+    },
+    {
+      "description": "Valid signature but wrong message",
+      "message": "WRONG message",
+      "claimed_signer_did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+      "signature_hex": "e08f3281942a8265e0f646f1621fbaf14ea70de4153e16161654ee51a9e2d921ecdc1c99bd41b611076c57c65440b2bb0abb58db453db88b62f1d3513bd6a503",
+      "should_fail": true
+    }
+  ]
+}

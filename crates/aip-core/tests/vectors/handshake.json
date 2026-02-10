@@ -1,0 +1,122 @@
+{
+  "description": "Handshake protocol test vectors for AIP",
+  "version": "1.0",
+  "note": "These vectors use the test keys from signatures.json",
+  "test_keys": {
+    "initiator": {
+      "seed_hex": "0100000000000000000000000000000000000000000000000000000000000000",
+      "did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb"
+    },
+    "responder": {
+      "seed_hex": "0200000000000000000000000000000000000000000000000000000000000000",
+      "did": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7"
+    }
+  },
+  "message_flow": [
+    {
+      "step": 1,
+      "direction": "initiator -> responder",
+      "message_type": "Hello",
+      "description": "Initiator announces intent to authenticate",
+      "fields": {
+        "type": "Hello",
+        "version": "1.0",
+        "did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+        "timestamp": "TIMESTAMP_PLACEHOLDER"
+      },
+      "validation": [
+        "timestamp must be within 5 minutes of current time",
+        "version must be 1.0",
+        "did must parse as valid AIP DID"
+      ]
+    },
+    {
+      "step": 2,
+      "direction": "responder -> initiator",
+      "message_type": "Challenge",
+      "description": "Responder issues cryptographic challenge",
+      "fields": {
+        "type": "Challenge",
+        "version": "1.0",
+        "issuer": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
+        "audience": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+        "nonce": "UUID_PLACEHOLDER",
+        "timestamp": "TIMESTAMP_PLACEHOLDER"
+      },
+      "validation": [
+        "audience must match Hello.did",
+        "issuer must be responder DID",
+        "nonce must be unique"
+      ]
+    },
+    {
+      "step": 3,
+      "direction": "initiator -> responder",
+      "message_type": "Proof",
+      "description": "Initiator proves identity by signing challenge",
+      "fields": {
+        "type": "Proof",
+        "version": "1.0",
+        "challenge_hash": "sha256:HASH_PLACEHOLDER",
+        "responder_did": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb",
+        "signing_key": "did:aip:1:EvFUfisEScFuZSqDXagC17m3bpP32B74dseMHtzQ5TNb#root",
+        "signature": "BASE64_SIGNATURE_PLACEHOLDER",
+        "counter_challenge": {
+          "type": "CounterChallenge",
+          "audience": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
+          "nonce": "UUID_PLACEHOLDER",
+          "timestamp": "TIMESTAMP_PLACEHOLDER"
+        }
+      },
+      "validation": [
+        "challenge_hash must be sha256 of JCS-canonicalized Challenge",
+        "signature must verify against responder_did public key",
+        "counter_challenge enables mutual authentication"
+      ]
+    },
+    {
+      "step": 4,
+      "direction": "responder -> initiator",
+      "message_type": "ProofAccepted",
+      "description": "Responder confirms and provides counter-proof",
+      "fields": {
+        "type": "ProofAccepted",
+        "version": "1.0",
+        "session_id": "UUID_PLACEHOLDER",
+        "counter_proof": {
+          "challenge_hash": "sha256:HASH_PLACEHOLDER",
+          "responder_did": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7",
+          "signing_key": "did:aip:1:8EYKVyNCsDFHkxos7V4kr8bMouYU2nPJ1QXk2ET8FBc7#root",
+          "signature": "BASE64_SIGNATURE_PLACEHOLDER"
+        },
+        "session_expires_at": "TIMESTAMP_PLACEHOLDER"
+      },
+      "validation": [
+        "counter_proof.signature must verify against responder DID",
+        "session_expires_at should be in the future"
+      ]
+    }
+  ],
+  "error_cases": [
+    {
+      "name": "replay_attack",
+      "description": "Same proof/nonce submitted twice",
+      "expected_error": "NonceReplay"
+    },
+    {
+      "name": "timestamp_too_old",
+      "description": "Hello timestamp more than 5 minutes in past",
+      "expected_error": "TimestampOutOfRange"
+    },
+    {
+      "name": "wrong_signature",
+      "description": "Proof signed by different key than claimed DID",
+      "expected_error": "InvalidSignature"
+    },
+    {
+      "name": "audience_mismatch",
+      "description": "Counter-challenge audience does not match verifier DID",
+      "expected_error": "AudienceMismatch"
+    }
+  ]
+}
