@@ -10,7 +10,7 @@ fn test_full_identity_creation() {
     
     // DID should be valid format
     let did_str = did.to_string();
-    assert!(did_str.starts_with("did:aip:1:"));
+    assert!(did_str.starts_with("did:key:z6Mk"));
     
     // Should be parseable
     let parsed: Did = did_str.parse().unwrap();
