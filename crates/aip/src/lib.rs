@@ -4,7 +4,7 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust
+//! ```rust,no_run
 //! use aip::{RootKey, Did};
 //!
 //! // Generate an identity
@@ -14,8 +14,8 @@
 //!
 //! ## Modules
 //!
-//! - [] - Identity primitives (keys, DIDs, documents)
-//! - [] - Mutual authentication protocol
+//! - [`core`] - Identity primitives (keys, DIDs, documents)
+//! - [`handshake`] - Mutual authentication protocol
 //!
 //! ## Re-exports
 //!
