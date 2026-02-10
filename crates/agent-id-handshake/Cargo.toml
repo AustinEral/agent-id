@@ -1,17 +1,17 @@
 [package]
-name = "aip-handshake"
-version = "0.1.1"
+name = "agent-id-handshake"
+version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Handshake protocol for the Agent Identity Protocol"
-repository = "https://github.com/AustinEral/aip"
-documentation = "https://docs.rs/aip-handshake"
+repository = "https://github.com/AustinEral/agent-id"
+documentation = "https://docs.rs/agent-id-handshake"
 readme = "README.md"
 keywords = ["identity", "authentication", "handshake", "agent", "did"]
 categories = ["authentication", "cryptography"]
 
 [dependencies]
-aip-core = { version = "0.1.1", path = "../aip-core" }
+agent-id-core = { version = "0.1.0", path = "../agent-id-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

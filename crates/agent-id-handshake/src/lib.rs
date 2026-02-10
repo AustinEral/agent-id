@@ -5,8 +5,8 @@
 //! # Example
 //!
 //! ```no_run
-//! use aip_core::RootKey;
-//! use aip_handshake::{messages::Hello, protocol::{Verifier, sign_proof}};
+//! use agent_id_core::RootKey;
+//! use agent_id_handshake::{messages::Hello, protocol::{Verifier, sign_proof}};
 //!
 //! // Agent A initiates
 //! let key_a = RootKey::generate();

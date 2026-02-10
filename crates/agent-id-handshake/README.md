@@ -1,6 +1,6 @@
-# aip-handshake
+# agent-id-handshake
 
-Mutual authentication handshake for the [Agent Identity Protocol](https://github.com/AustinEral/aip).
+Mutual authentication handshake for the [Agent Identity Protocol](https://github.com/AustinEral/agent-id).
 
 ## Features
 
@@ -11,9 +11,9 @@ Mutual authentication handshake for the [Agent Identity Protocol](https://github
 ## Usage
 
 ```rust
-use aip_core::RootKey;
-use aip_handshake::protocol::Verifier;
-use aip_handshake::messages::Hello;
+use agent_id_core::RootKey;
+use agent_id_handshake::protocol::Verifier;
+use agent_id_handshake::messages::Hello;
 
 let my_key = RootKey::generate();
 let verifier = Verifier::new(my_key.did());

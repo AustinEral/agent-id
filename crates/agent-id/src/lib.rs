@@ -5,7 +5,7 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use aip::{RootKey, Did};
+//! use agent_id::{RootKey, Did};
 //!
 //! // Generate an identity
 //! let key = RootKey::generate();
@@ -21,8 +21,8 @@
 //!
 //! Common types are re-exported at the crate root for convenience.
 
-pub use aip_core as core;
-pub use aip_handshake as handshake;
+pub use agent_id_core as core;
+pub use agent_id_handshake as handshake;
 
 // Re-export common types at root
-pub use aip_core::{Did, DidDocument, Error, Result, RootKey};
+pub use agent_id_core::{Did, DidDocument, Error, Result, RootKey};

@@ -1,17 +1,17 @@
-# aip
+# agent-id
 
 Agent Identity Protocol - cryptographic identity and authentication for AI agents.
 
 ## Installation
 
 ```bash
-cargo add aip
+cargo add agent-id
 ```
 
 ## Usage
 
 ```rust
-use aip::{RootKey, Did};
+use agent_id::{RootKey, Did};
 
 // Generate an identity
 let key = RootKey::generate();
@@ -19,7 +19,7 @@ println!("DID: {}", key.did());
 // did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y
 
 // Perform a handshake
-use aip::handshake::protocol::Verifier;
+use agent_id::handshake::protocol::Verifier;
 let verifier = Verifier::new(key.did());
 ```
 
@@ -27,8 +27,8 @@ let verifier = Verifier::new(key.did());
 
 This is an umbrella crate that re-exports:
 
-- [aip-core](https://crates.io/crates/aip-core) - Identity primitives
-- [aip-handshake](https://crates.io/crates/aip-handshake) - Authentication protocol
+- [agent-id-core](https://crates.io/crates/agent-id-core) - Identity primitives
+- [agent-id-handshake](https://crates.io/crates/agent-id-handshake) - Authentication protocol
 
 ## License
 

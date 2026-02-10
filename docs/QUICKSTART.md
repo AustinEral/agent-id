@@ -5,18 +5,18 @@ Get started with the Agent Identity Protocol in 5 minutes.
 ## Try the CLI
 
 ```bash
-git clone https://github.com/AustinEral/aip.git
-cd aip
+git clone https://github.com/AustinEral/agent-id.git
+cd agent-id
 
 # Generate an identity
-cargo run --bin aip -- identity generate
+cargo run --bin agent-id -- identity generate
 # → did:key:z6MktNWXFy7fn9kNfwfvD9e2rDK3RPetS4MRKtZH8AxQzg9y
 
 # Show your identity
-cargo run --bin aip -- identity show
+cargo run --bin agent-id -- identity show
 
 # Test a handshake
-cargo run --bin aip -- handshake test
+cargo run --bin agent-id -- handshake test
 
 # Run the example
 cargo run --example basic
@@ -28,14 +28,14 @@ cargo run --example basic
 
 ```toml
 [dependencies]
-aip-core = { git = "https://github.com/AustinEral/aip" }
-aip-handshake = { git = "https://github.com/AustinEral/aip" }
+agent-id-core = { git = "https://github.com/AustinEral/agent-id" }
+agent-id-handshake = { git = "https://github.com/AustinEral/agent-id" }
 ```
 
 ### Create an Identity
 
 ```rust
-use aip_core::RootKey;
+use agent_id_core::RootKey;
 
 fn main() {
     let key = RootKey::generate();
@@ -46,9 +46,9 @@ fn main() {
 ### Perform a Handshake
 
 ```rust
-use aip_core::RootKey;
-use aip_handshake::messages::Hello;
-use aip_handshake::protocol::{sign_proof, Verifier};
+use agent_id_core::RootKey;
+use agent_id_handshake::messages::Hello;
+use agent_id_handshake::protocol::{sign_proof, Verifier};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Two agents
@@ -85,4 +85,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - [INTEGRATION.md](INTEGRATION.md) — Full integration guide
 - [PROTOCOL.md](../spec/PROTOCOL.md) — Protocol specification
-- [aip-trust](https://github.com/AustinEral/aip-trust) — Optional trust layer
+- [aip-trust](https://github.com/AustinEral/agent-id-trust) — Optional trust layer

@@ -1,4 +1,4 @@
-//! Error types for aip-core.
+//! Error types for agent-id-core.
 
 use thiserror::Error;
 

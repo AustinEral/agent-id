@@ -23,7 +23,7 @@ pub enum HandshakeError {
     InvalidDelegation,
 
     #[error("Core error: {0}")]
-    Core(#[from] aip_core::Error),
+    Core(#[from] agent_id_core::Error),
 
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),

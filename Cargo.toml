@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/aip",
-    "crates/aip-core",
-    "crates/aip-handshake",
+    "crates/agent-id",
+    "crates/agent-id-core",
+    "crates/agent-id-handshake",
     "cli",
     "examples",
 ]
@@ -12,7 +12,7 @@ members = [
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/AustinEral/aip"
+repository = "https://github.com/AustinEral/agent-id"
 
 [workspace.dependencies]
 ed25519-dalek = { version = "2", features = ["rand_core", "zeroize"] }

@@ -1,17 +1,17 @@
 [package]
-name = "aip-cli"
+name = "agent-id-cli"
 description = "CLI for the Agent Identity Protocol"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "aip"
+name = "agent-id"
 path = "src/main.rs"
 
 [dependencies]
-aip-core = { path = "../crates/aip-core" }
-aip-handshake = { path = "../crates/aip-handshake" }
+agent-id-core = { path = "../crates/agent-id-core" }
+agent-id-handshake = { path = "../crates/agent-id-handshake" }
 clap = { version = "4", features = ["derive"] }
 serde.workspace = true
 serde_json.workspace = true

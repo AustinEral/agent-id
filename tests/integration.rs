@@ -1,6 +1,6 @@
 //! Integration tests for the Agent Identity Protocol.
 
-use aip_core::{Did, RootKey, SessionKey};
+use agent_id_core::{Did, RootKey, SessionKey};
 
 #[test]
 fn test_full_identity_creation() {
@@ -33,7 +33,7 @@ fn test_sign_and_verify_flow() {
     let did = root.did();
     let pubkey = did.public_key().unwrap();
     
-    aip_core::keys::verify(&pubkey, message, &signature).unwrap();
+    agent_id_core::keys::verify(&pubkey, message, &signature).unwrap();
 }
 
 #[test]
