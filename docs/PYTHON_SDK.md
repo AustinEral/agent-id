@@ -45,7 +45,15 @@ line-length = 99
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I"]
+select = [
+    "E4", "E7", "E9",  # pycodestyle
+    "F",                # pyflakes
+    "I",                # isort
+    "UP",               # pyupgrade
+    "B",                # bugbear
+    "C4",               # comprehensions
+    "PIE",              # misc best practices
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -150,6 +158,42 @@ assert doc.verify()
 ---
 
 ## Code Style
+
+### Imports
+
+- **Absolute imports** preferred over relative
+- **No star imports** — `from x import *` is banned
+- **One import per line** for clarity (isort handles this)
+
+```python
+# ❌ Bad
+from ..utils import *
+from agent_id import RootKey, Did, DidDocument, Signer
+
+# ✅ Good
+from agent_id import Did
+from agent_id import DidDocument
+from agent_id import RootKey
+from agent_id import Signer
+```
+
+### No Mutable Default Arguments
+
+Classic Python gotcha — never use mutable defaults:
+
+```python
+# ❌ Bug — list is shared across calls
+def add(item: str, items: list[str] = []) -> list[str]:
+    items.append(item)
+    return items
+
+# ✅ Good — None sentinel
+def add(item: str, items: list[str] | None = None) -> list[str]:
+    if items is None:
+        items = []
+    items.append(item)
+    return items
+```
 
 ### No Loose Dicts
 
@@ -257,23 +301,72 @@ class MessageHandler:
 ```
 
 **Variable names:**
-- **No single letters** — `x`, `i`, `d` are banned (except `_` for unused)
+- **No single letters** — except `i`, `j`, `k` for indices and `_` for unused
 - **No numbers** — avoid `key1`, `sig2` unless genuinely meaningful
 - **Descriptive** — a reader should understand without context
 
 ```python
 # ❌ Bad
-for i in keys:
-    s = sign(i)
+for x in keys:
+    s = sign(x)
 
 # ✅ Good
 for key in keys:
     signature = sign(key)
+
+# ✅ Also okay — i for index is idiomatic
+for i, key in enumerate(keys):
+    signatures[i] = sign(key)
 ```
+
+### Reduce Nesting
+
+Use early returns and guard clauses. Flat is better than nested.
+
+```python
+# ❌ Bad — deep nesting
+def validate(key: RootKey) -> bool:
+    if key is not None:
+        if key.did is not None:
+            if len(key.did.public_key) == 32:
+                return True
+            else:
+                return False
+        else:
+            return False
+    else:
+        return False
+
+# ✅ Good — guard clauses, flat
+def validate(key: RootKey) -> bool:
+    if key is None:
+        return False
+    if key.did is None:
+        return False
+    if len(key.did.public_key) != 32:
+        return False
+    return True
+```
+
+**Rules:**
+- Max nesting depth: **3 levels** (function body counts as 1)
+- Prefer early `return`, `raise`, or `continue` over `else` blocks
+- Extract nested logic into separate functions
+
+### Function Length
+
+- **Prefer under 30 lines**
+- **Never exceed 50 lines**
+- If it's too long, it does too much — split it
+
+### Complexity
+
+- **Max cyclomatic complexity: 10**
+- If a function has too many branches, refactor
 
 ### Comments
 
-**No inline comments** unless absolutely necessary.
+**No inline comments** unless a single word adds clarity (e.g., `# timing-safe`).
 
 If you need a comment, the code isn't clear enough. Refactor first:
 
