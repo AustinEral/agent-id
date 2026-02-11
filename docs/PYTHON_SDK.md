@@ -163,18 +163,22 @@ assert doc.verify()
 
 - **Absolute imports** preferred over relative
 - **No star imports** — `from x import *` is banned
-- **One import per line** for clarity (isort handles this)
+- **Parentheses for multi-line** when imports get long
 
 ```python
-# ❌ Bad
+# ❌ Bad — star import
 from ..utils import *
-from agent_id import RootKey, Did, DidDocument, Signer
 
-# ✅ Good
-from agent_id import Did
-from agent_id import DidDocument
-from agent_id import RootKey
-from agent_id import Signer
+# ❌ Bad — too long, hard to read
+from agent_id import RootKey, Did, DidDocument, Signer, SessionKey, AIPError
+
+# ✅ Good — parentheses, one per line
+from agent_id import (
+    Did,
+    DidDocument,
+    RootKey,
+    Signer,
+)
 ```
 
 ### No Mutable Default Arguments
