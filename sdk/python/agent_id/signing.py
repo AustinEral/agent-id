@@ -1,112 +1,115 @@
-"""
-Message signing and verification using JCS (RFC 8785) canonicalization.
+"""JCS canonicalization and message signing.
 
-All AIP signatures use:
-1. JCS canonicalization of JSON objects
-2. UTF-8 encoding to bytes
-3. Ed25519 signing
+Uses RFC 8785 JSON Canonicalization Scheme for deterministic
+JSON serialization, ensuring signatures are verifiable across
+different implementations.
 """
-
-from __future__ import annotations
 
 import base64
-from typing import Any, Dict, Union
+import hashlib
+import secrets
+from typing import TYPE_CHECKING
 
 import canonicaljson
 from nacl.signing import VerifyKey
 
-from agent_id.keys import RootKey, SessionKey
+from agent_id.errors import InvalidSignatureError, SerializationError
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
+
+    from agent_id.keys import RootKey, SessionKey
 
 
-def canonicalize(obj: Dict[str, Any]) -> bytes:
+def canonicalize(value: dict) -> bytes:
+    """Canonicalize a dict using JCS (RFC 8785).
+
+    Returns deterministic bytes suitable for signing.
     """
-    Canonicalize a JSON object using JCS (RFC 8785).
-    
-    Args:
-        obj: A JSON-serializable dictionary
-        
-    Returns:
-        Canonical JSON as UTF-8 bytes
-    """
-    return canonicaljson.encode_canonical_json(obj)
+    try:
+        return canonicaljson.encode_canonical_json(value)
+    except Exception as exc:
+        raise SerializationError(f"JCS canonicalization failed: {exc}") from exc
 
 
-def sign_message(
-    message: Dict[str, Any],
-    key: Union[RootKey, SessionKey],
-) -> str:
+def hash_canonical(value: dict) -> bytes:
+    """SHA-256 hash of canonical JSON.
+
+    This is the standard way to prepare data for signing in AIP.
     """
-    Sign a JSON message with the given key.
-    
-    Args:
-        message: A JSON-serializable dictionary
-        key: The key to sign with (RootKey or SessionKey)
-        
-    Returns:
-        Base64-encoded signature
+    canonical = canonicalize(value)
+    return hashlib.sha256(canonical).digest()
+
+
+def sign_bytes(message: bytes, key: "RootKey | SessionKey") -> bytes:
+    """Sign raw bytes. Returns 64-byte signature."""
+    return key.sign(message)
+
+
+def sign_dict(value: dict, key: "RootKey | SessionKey") -> str:
+    """Sign a dict using JCS canonicalization.
+
+    Returns base64-encoded signature.
     """
-    canonical = canonicalize(message)
+    canonical = canonicalize(value)
     signature = key.sign(canonical)
     return base64.b64encode(signature).decode("ascii")
 
 
-def verify_message(
-    message: Dict[str, Any],
-    signature_b64: str,
-    public_key: bytes,
-) -> bool:
+def sign_model(model: "BaseModel", key: "RootKey | SessionKey") -> str:
+    """Sign a Pydantic model using JCS canonicalization.
+
+    Returns base64-encoded signature.
     """
-    Verify a signed JSON message.
-    
-    Args:
-        message: The original JSON message
-        signature_b64: Base64-encoded signature
-        public_key: 32-byte Ed25519 public key
-        
-    Returns:
-        True if signature is valid, False otherwise
+    value = model.model_dump(mode="json")
+    return sign_dict(value, key)
+
+
+def verify_bytes(message: bytes, signature: bytes, public_key: bytes) -> bool:
+    """Verify a signature on raw bytes.
+
+    Uses constant-time comparison to prevent timing attacks.
     """
     try:
-        canonical = canonicalize(message)
-        signature = base64.b64decode(signature_b64)
         verify_key = VerifyKey(public_key)
-        verify_key.verify(canonical, signature)
+        verify_key.verify(message, signature)
         return True
     except Exception:
         return False
 
 
-def sign_with_metadata(
-    message: Dict[str, Any],
-    key: Union[RootKey, SessionKey],
-) -> Dict[str, Any]:
-    """
-    Sign a message and return it with attached signature metadata.
-    
+def verify_dict(value: dict, signature_b64: str, public_key: bytes) -> bool:
+    """Verify a signature on a dict.
+
     Args:
-        message: A JSON-serializable dictionary
-        key: The key to sign with
-        
+        value: The original dict.
+        signature_b64: Base64-encoded signature.
+        public_key: 32-byte Ed25519 public key.
+
     Returns:
-        The message with a 'proof' field containing signature info
+        True if valid, False otherwise.
     """
-    # Determine key ID
-    if isinstance(key, RootKey):
-        key_id = f"{key.did}#root"
-    else:
-        key_id = key.full_key_id
-    
-    # Create message copy without proof for signing
-    message_to_sign = {k: v for k, v in message.items() if k != "proof"}
-    
-    signature = sign_message(message_to_sign, key)
-    
-    # Return message with proof
-    return {
-        **message,
-        "proof": {
-            "type": "Ed25519Signature2020",
-            "verificationMethod": key_id,
-            "proofValue": signature,
-        },
-    }
+    try:
+        canonical = canonicalize(value)
+        signature = base64.b64decode(signature_b64)
+        return verify_bytes(canonical, signature, public_key)
+    except Exception:
+        return False
+
+
+def verify_dict_strict(value: dict, signature_b64: str, public_key: bytes) -> None:
+    """Verify a signature on a dict, raising on failure.
+
+    Raises:
+        InvalidSignatureError: If verification fails.
+    """
+    if not verify_dict(value, signature_b64, public_key):
+        payload_hash = hash_canonical(value).hex()[:16]
+        raise InvalidSignatureError(
+            f"Signature verification failed. Payload hash: {payload_hash}..."
+        )
+
+
+def constant_time_compare(a: bytes, b: bytes) -> bool:
+    """Constant-time comparison to prevent timing attacks."""
+    return secrets.compare_digest(a, b)

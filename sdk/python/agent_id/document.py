@@ -1,5 +1,4 @@
-"""
-DID Document handling for Agent Identity Protocol.
+"""DID Document handling for Agent Identity Protocol.
 
 A DID Document describes an agent's identity, including:
 - Verification methods (public keys)
@@ -7,85 +6,69 @@ A DID Document describes an agent's identity, including:
 - Authentication methods
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Self
+
+import base58
 
 from agent_id.did import Did
+from agent_id.errors import InvalidSignatureError, ValidationError
 from agent_id.keys import RootKey
-from agent_id.signing import canonicalize, sign_message, verify_message
+from agent_id.signing import canonicalize, verify_bytes
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class VerificationMethod:
     """A verification method (public key) in a DID Document."""
-    
+
     id: str
     type: str
     controller: str
     public_key_multibase: str
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Service:
     """A service endpoint in a DID Document."""
-    
+
     id: str
     type: str
     service_endpoint: str
 
 
-@dataclass
+@dataclass(slots=True)
 class DidDocument:
-    """
-    A DID Document describing an agent's identity.
-    
-    Example:
-        >>> key = RootKey.generate()
-        >>> doc = DidDocument.new(key)
-        >>> doc = doc.with_handshake_endpoint("https://agent.example/aip")
-        >>> signed_doc = doc.sign(key)
-    """
-    
+    """A DID Document describing an agent's identity."""
+
     did: Did
-    verification_methods: List[VerificationMethod] = field(default_factory=list)
-    authentication: List[str] = field(default_factory=list)
-    assertion_method: List[str] = field(default_factory=list)
-    services: List[Service] = field(default_factory=list)
-    created: Optional[datetime] = None
-    updated: Optional[datetime] = None
-    proof: Optional[Dict[str, Any]] = None
-    
+    verification_methods: list[VerificationMethod] = field(default_factory=list)
+    authentication: list[str] = field(default_factory=list)
+    assertion_method: list[str] = field(default_factory=list)
+    services: list[Service] = field(default_factory=list)
+    created: datetime | None = None
+    updated: datetime | None = None
+    proof: dict | None = None
+
     @classmethod
-    def new(cls, root_key: RootKey) -> DidDocument:
-        """
-        Create a new DID Document for a root key.
-        
-        Args:
-            root_key: The agent's root key
-            
-        Returns:
-            An unsigned DID Document
-        """
-        import base58
-        
+    def new(cls, root_key: RootKey) -> Self:
+        """Create a new DID Document for a root key."""
         did = root_key.did
         key_id = f"{did}#root"
-        
-        # Encode public key as multibase (z = base58btc)
-        public_key_multibase = "z" + base58.b58encode(bytes(root_key.verify_key)).decode("ascii")
-        
+
+        public_key_multibase = "z" + base58.b58encode(
+            bytes(root_key.verify_key)
+        ).decode("ascii")
+
         verification_method = VerificationMethod(
             id=key_id,
             type="Ed25519VerificationKey2020",
             controller=str(did),
             public_key_multibase=public_key_multibase,
         )
-        
-        now = datetime.now(timezone.utc)
-        
+
+        now = datetime.now(UTC)
+
         return cls(
             did=did,
             verification_methods=[verification_method],
@@ -94,52 +77,27 @@ class DidDocument:
             created=now,
             updated=now,
         )
-    
-    def with_handshake_endpoint(self, endpoint: str) -> DidDocument:
-        """
-        Add a handshake service endpoint.
-        
-        Args:
-            endpoint: The URL for AIP handshake
-            
-        Returns:
-            A new DidDocument with the service added
-        """
+
+    def with_handshake_endpoint(self, endpoint: str) -> Self:
+        """Add a handshake service endpoint. Returns new document."""
         service = Service(
             id=f"{self.did}#handshake",
             type="AIPHandshake",
             service_endpoint=endpoint,
         )
-        
-        return DidDocument(
-            did=self.did,
-            verification_methods=self.verification_methods,
-            authentication=self.authentication,
-            assertion_method=self.assertion_method,
-            services=[*self.services, service],
-            created=self.created,
-            updated=datetime.now(timezone.utc),
-            proof=None,  # Clear proof since document changed
-        )
-    
-    def with_service(self, service_id: str, service_type: str, endpoint: str) -> DidDocument:
-        """
-        Add a custom service endpoint.
-        
-        Args:
-            service_id: Short ID for the service (will be prefixed with DID)
-            service_type: The service type
-            endpoint: The service URL
-            
-        Returns:
-            A new DidDocument with the service added
-        """
+        return self._with_service(service)
+
+    def with_service(self, service_id: str, service_type: str, endpoint: str) -> Self:
+        """Add a custom service endpoint. Returns new document."""
         service = Service(
             id=f"{self.did}#{service_id}",
             type=service_type,
             service_endpoint=endpoint,
         )
-        
+        return self._with_service(service)
+
+    def _with_service(self, service: Service) -> Self:
+        """Internal: add a service and return new document."""
         return DidDocument(
             did=self.did,
             verification_methods=self.verification_methods,
@@ -147,21 +105,13 @@ class DidDocument:
             assertion_method=self.assertion_method,
             services=[*self.services, service],
             created=self.created,
-            updated=datetime.now(timezone.utc),
+            updated=datetime.now(UTC),
             proof=None,
         )
-    
-    def to_dict(self, include_proof: bool = True) -> Dict[str, Any]:
-        """
-        Convert to a JSON-serializable dictionary.
-        
-        Args:
-            include_proof: Whether to include the proof field
-            
-        Returns:
-            DID Document as a dictionary
-        """
-        doc: Dict[str, Any] = {
+
+    def to_dict(self, include_proof: bool = True) -> dict:
+        """Serialize to a JSON-compatible dict."""
+        doc: dict = {
             "@context": [
                 "https://www.w3.org/ns/did/v1",
                 "https://aip.network/v1",
@@ -180,56 +130,48 @@ class DidDocument:
             "authentication": self.authentication,
             "assertionMethod": self.assertion_method,
         }
-        
+
         if self.services:
             doc["service"] = [
                 {
-                    "id": s.id,
-                    "type": s.type,
-                    "serviceEndpoint": s.service_endpoint,
+                    "id": svc.id,
+                    "type": svc.type,
+                    "serviceEndpoint": svc.service_endpoint,
                 }
-                for s in self.services
+                for svc in self.services
             ]
-        
+
         if self.created:
             doc["created"] = self.created.isoformat().replace("+00:00", "Z")
-        
+
         if self.updated:
             doc["updated"] = self.updated.isoformat().replace("+00:00", "Z")
-        
+
         if include_proof and self.proof:
             doc["proof"] = self.proof
-        
+
         return doc
-    
-    def sign(self, key: RootKey) -> DidDocument:
-        """
-        Sign this DID Document.
-        
-        Args:
-            key: The root key to sign with (must match document DID)
-            
-        Returns:
-            A new DidDocument with proof attached
-            
-        Raises:
-            ValueError: If key doesn't match document DID
-        """
+
+    def sign(self, key: RootKey) -> Self:
+        """Sign this document. Returns new signed document."""
         if key.did != self.did:
-            raise ValueError(f"Key DID {key.did} doesn't match document DID {self.did}")
-        
-        # Get document without proof for signing
+            raise ValidationError(
+                f"Key DID {key.did} doesn't match document DID {self.did}"
+            )
+
         doc_dict = self.to_dict(include_proof=False)
-        
-        signature = sign_message(doc_dict, key)
-        
+        canonical = canonicalize(doc_dict)
+        signature = key.sign(canonical)
+
+        import base64
+
         proof = {
             "type": "Ed25519Signature2020",
-            "created": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "created": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "verificationMethod": f"{self.did}#root",
-            "proofValue": signature,
+            "proofValue": base64.b64encode(signature).decode("ascii"),
         }
-        
+
         return DidDocument(
             did=self.did,
             verification_methods=self.verification_methods,
@@ -240,27 +182,29 @@ class DidDocument:
             updated=self.updated,
             proof=proof,
         )
-    
+
     def verify(self) -> bool:
-        """
-        Verify the document's signature.
-        
-        Returns:
-            True if signature is valid
-            
+        """Verify the document's signature.
+
         Raises:
-            ValueError: If document has no proof
+            ValidationError: If document has no proof.
+            InvalidSignatureError: If signature is invalid.
         """
         if not self.proof:
-            raise ValueError("Document has no proof to verify")
-        
-        # Get document without proof
+            raise ValidationError("Document has no proof to verify")
+
         doc_dict = self.to_dict(include_proof=False)
-        
-        signature_b64 = self.proof.get("proofValue", "")
-        
-        return verify_message(doc_dict, signature_b64, self.did.public_key)
-    
+        canonical = canonicalize(doc_dict)
+
+        import base64
+
+        signature = base64.b64decode(self.proof.get("proofValue", ""))
+
+        if not verify_bytes(canonical, signature, self.did.public_key):
+            raise InvalidSignatureError("Document signature verification failed")
+
+        return True
+
     def __repr__(self) -> str:
-        signed = "signed" if self.proof else "unsigned"
-        return f"DidDocument({self.did}, {signed})"
+        status = "signed" if self.proof else "unsigned"
+        return f"DidDocument({self.did}, {status})"

@@ -1,99 +1,91 @@
+"""Decentralized Identifier (DID) handling.
+
+Format: did:key:z<base58btc(multicodec_prefix + ed25519_public_key)>
+
+Uses the did:key method (W3C standard) with Ed25519 keys.
+- Multicodec prefix: 0xed01 (Ed25519 public key)
+- Multibase prefix: z (base58btc)
 """
-DID (Decentralized Identifier) handling for Agent Identity Protocol.
 
-Uses the did:key method with Ed25519 public keys.
-Format: did:key:z<base58btc(multicodec + ed25519_public_key)>
-"""
-
-from __future__ import annotations
-
-import re
 from dataclasses import dataclass
 
 import base58
 
+from agent_id.errors import InvalidDIDError
 
-# Multicodec prefix for Ed25519 public key
+# Ed25519 public key multicodec prefix (varint-encoded 0xed)
 ED25519_MULTICODEC = bytes([0xED, 0x01])
 
-# did:key pattern
-DID_KEY_PATTERN = re.compile(r"^did:key:z([1-9A-HJ-NP-Za-km-z]+)$")
+# Multibase prefix for base58btc
+BASE58BTC_PREFIX = "z"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Did:
-    """
-    A Decentralized Identifier using the did:key method.
-    
+    """A parsed DID (did:key method).
+
     Attributes:
-        value: The full DID string (e.g., did:key:z6Mk...)
-        public_key: The raw Ed25519 public key bytes (32 bytes)
+        public_key: The 32-byte Ed25519 public key.
     """
-    
-    value: str
+
     public_key: bytes
-    
+
+    def __post_init__(self) -> None:
+        if len(self.public_key) != 32:
+            raise InvalidDIDError(f"public key must be 32 bytes, got {len(self.public_key)}")
+
     @classmethod
-    def from_public_key(cls, public_key: bytes) -> Did:
-        """
-        Create a DID from an Ed25519 public key.
-        
-        Args:
-            public_key: 32-byte Ed25519 public key
-            
-        Returns:
-            A Did instance
-            
-        Raises:
-            ValueError: If public key is not 32 bytes
-        """
-        if len(public_key) != 32:
-            raise ValueError(f"Ed25519 public key must be 32 bytes, got {len(public_key)}")
-        
-        # Encode: multicodec prefix + public key
-        multicodec_key = ED25519_MULTICODEC + public_key
-        
-        # Base58btc encode (with 'z' prefix per multibase)
-        encoded = base58.b58encode(multicodec_key).decode("ascii")
-        
-        did_value = f"did:key:z{encoded}"
-        return cls(value=did_value, public_key=public_key)
-    
+    def from_public_key(cls, public_key: bytes) -> "Did":
+        """Create a DID from an Ed25519 public key."""
+        return cls(public_key=public_key)
+
     @classmethod
-    def parse(cls, did_string: str) -> Did:
-        """
-        Parse a did:key string.
-        
+    def parse(cls, did_string: str) -> "Did":
+        """Parse a did:key string.
+
         Args:
-            did_string: A did:key formatted string
-            
+            did_string: A did:key formatted string.
+
         Returns:
-            A Did instance
-            
+            A Did instance.
+
         Raises:
-            ValueError: If the DID format is invalid
+            InvalidDIDError: If the format is invalid.
         """
-        match = DID_KEY_PATTERN.match(did_string)
-        if not match:
-            raise ValueError(f"Invalid did:key format: {did_string}")
-        
-        # Decode base58btc (without 'z' prefix)
-        encoded = match.group(1)
-        decoded = base58.b58decode(encoded)
-        
-        # Verify multicodec prefix
-        if not decoded.startswith(ED25519_MULTICODEC):
-            raise ValueError(f"Expected Ed25519 multicodec prefix, got {decoded[:2].hex()}")
-        
-        public_key = decoded[len(ED25519_MULTICODEC):]
-        
-        if len(public_key) != 32:
-            raise ValueError(f"Invalid public key length: {len(public_key)}")
-        
-        return cls(value=did_string, public_key=public_key)
-    
+        prefix = "did:key:"
+        if not did_string.startswith(prefix):
+            raise InvalidDIDError("must start with 'did:key:'")
+
+        key_part = did_string[len(prefix) :]
+
+        if not key_part.startswith(BASE58BTC_PREFIX):
+            raise InvalidDIDError("must use base58btc encoding (z prefix)")
+
+        encoded = key_part[1:]
+
+        try:
+            decoded = base58.b58decode(encoded)
+        except Exception as exc:
+            raise InvalidDIDError(f"invalid base58 encoding: {exc}") from exc
+
+        if len(decoded) != 34:
+            raise InvalidDIDError(f"expected 34 bytes, got {len(decoded)}")
+
+        if decoded[:2] != ED25519_MULTICODEC:
+            raise InvalidDIDError("unsupported key type (expected Ed25519 multicodec 0xed01)")
+
+        public_key = decoded[2:]
+        return cls(public_key=public_key)
+
+    @property
+    def key_id(self) -> str:
+        """Get the multibase-encoded key portion (without did:key: prefix)."""
+        combined = ED25519_MULTICODEC + self.public_key
+        encoded = base58.b58encode(combined).decode("ascii")
+        return f"{BASE58BTC_PREFIX}{encoded}"
+
     def __str__(self) -> str:
-        return self.value
-    
+        return f"did:key:{self.key_id}"
+
     def __repr__(self) -> str:
-        return f"Did({self.value!r})"
+        return f"Did({self})"
