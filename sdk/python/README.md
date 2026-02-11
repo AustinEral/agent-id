@@ -5,15 +5,25 @@ Python implementation of the Agent Identity Protocol (AIP) for cryptographic ide
 ## Installation
 
 ```bash
-pip install agent-id
+uv add agent-id
 ```
 
 Or install from source:
 
 ```bash
 cd sdk/python
+uv sync --dev
+```
+
+<details>
+<summary>Alternative: pip</summary>
+
+```bash
+pip install agent-id
+# or from source
 pip install -e ".[dev]"
 ```
+</details>
 
 ## Quick Start
 
@@ -128,19 +138,19 @@ A DID Document describing an agent.
 
 ```bash
 # Install dev dependencies
-pip install -e ".[dev]"
+uv sync --dev
 
 # Run tests
-pytest
+uv run pytest
 
 # Format code
-ruff format .
+uv run ruff format .
 
 # Lint
-ruff check .
+uv run ruff check .
 
 # Type check
-mypy agent_id
+uv run mypy agent_id
 ```
 
 ## License
