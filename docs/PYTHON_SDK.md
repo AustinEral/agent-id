@@ -117,10 +117,18 @@ session = SessionKey.generate(root_key)
 ### Signing
 
 ```python
-from agent_id import sign, verify
+from agent_id import Signer
 
-signature = sign(message_dict, key)
-is_valid = verify(message_dict, signature, public_key)
+signer = Signer(key)
+
+# Sign raw bytes
+signature = signer.sign(payload: bytes)
+
+# Sign a model (uses JCS canonicalization)
+signed = signer.sign_model(my_pydantic_model)
+
+# Verify
+is_valid = signer.verify(payload, signature, public_key)
 ```
 
 ### DID Documents
@@ -141,13 +149,42 @@ assert doc.verify()
 
 ## Code Style
 
-**Docstrings:** Google style, only when not obvious.
+### No Loose Dicts
+
+Never use `dict[str, Any]` to pass data around. Always define the shape:
 
 ```python
+# ❌ Bad — what's in this dict?
 def sign(message: dict[str, Any], key: RootKey) -> str:
-    """Sign a message. Returns base64 signature."""
+    ...
+
+# ✅ Good — explicit model
+class SignedMessage(BaseModel):
+    payload: bytes
+    signature: str
+    signer: Did
+
+def sign(message: Message, key: RootKey) -> SignedMessage:
     ...
 ```
+
+Use:
+- **Pydantic models** for data crossing boundaries
+- **dataclasses** for internal structures
+- **TypedDict** only if you must interface with untyped JSON
+- **Generics** when building reusable components
+
+### No `Any`
+
+Avoid `Any` unless interfacing with untyped external code. If you need flexibility, use:
+- `object` (for truly unknown types that you won't access)
+- Generics with `TypeVar`
+- Union types
+- Protocols for structural typing
+
+### Docstrings
+
+Google style, only when not obvious.
 
 **Errors:** Custom hierarchy, clear messages.
 
@@ -177,23 +214,39 @@ from dataclasses import dataclass, fields, astuple
 from contextlib import nullcontext
 
 @dataclass
-class SignTestCase:
-    message: dict
-    should_succeed: bool = True
+class DidParseTestCase:
+    did_string: str
+    expected_public_key_len: int | None = 32
     exception: type[Exception] | None = None
+    exception_message: str | None = None
 
-SIGN_CASES = {
-    "simple": SignTestCase(message={"a": 1}),
-    "empty": SignTestCase(message={}),
+DID_PARSE_CASES = {
+    "valid did:key": DidParseTestCase(
+        did_string="did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+    ),
+    "invalid prefix": DidParseTestCase(
+        did_string="did:web:example.com",
+        expected_public_key_len=None,
+        exception=InvalidDIDError,
+        exception_message="Invalid did:key format",
+    ),
 }
 
 @pytest.mark.parametrize(
-    argnames=[f.name for f in fields(SignTestCase)],
-    argvalues=[astuple(tc) for tc in SIGN_CASES.values()],
-    ids=list(SIGN_CASES.keys()),
+    argnames=[f.name for f in fields(DidParseTestCase)],
+    argvalues=[astuple(tc) for tc in DID_PARSE_CASES.values()],
+    ids=list(DID_PARSE_CASES.keys()),
 )
-def test_sign(message, should_succeed, exception):
-    ...
+def test_did_parse(
+    did_string: str,
+    expected_public_key_len: int | None,
+    exception: type[Exception] | None,
+    exception_message: str | None,
+) -> None:
+    with nullcontext() if exception is None else pytest.raises(exception, match=exception_message):
+        did = Did.parse(did_string)
+        if expected_public_key_len is not None:
+            assert len(did.public_key) == expected_public_key_len
 ```
 
 ---
