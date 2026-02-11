@@ -10,71 +10,67 @@
 
 A Python implementation of the Agent Identity Protocol core functionality, enabling Python-based AI agents to generate identities, sign messages, and participate in AIP handshakes.
 
-## Goals
+## Principles
 
-1. **API parity with Rust SDK** — Same concepts, Pythonic naming
-2. **Minimal dependencies** — Only what's necessary for crypto and encoding
-3. **Type safety** — Full type hints, mypy strict mode
-4. **Modern tooling** — uv, ruff, pytest
+- **YAGNI** — Don't build it until you need it
+- **SOLID** — Single responsibility, clean interfaces
+- **Clean code** — Readable, minimal, no cleverness
+- **Fail fast** — Raise early on bad input
 
-## Non-Goals
+---
 
-- Async HTTP client for handshakes (leave to integrators)
-- Trust layer implementation (separate package)
-- Avatar/visual identity (separate package)
+## Project Setup
+
+```toml
+[project]
+name = "agent-id"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+dependencies = [
+    "pynacl>=1.5.0",
+    "canonicaljson>=2.0.0",
+    "base58>=2.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.0",
+    "pytest>=8.0.0",
+    "ruff>=0.13.0",
+]
+
+[tool.ruff]
+line-length = 99
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+```
 
 ---
 
 ## Dependencies
 
-| Package | Purpose | Justification |
-|---------|---------|---------------|
-| `pynacl` | Ed25519 signing | Bindings to libsodium, battle-tested |
-| `canonicaljson` | JCS (RFC 8785) | Standard library for canonical JSON |
-| `base58` | Base58btc encoding | Required for did:key format |
+| Package | Purpose |
+|---------|---------|
+| `pynacl` | Ed25519 signing (libsodium bindings) |
+| `canonicaljson` | JCS (RFC 8785) |
+| `base58` | Base58btc encoding for did:key |
 
-**Dev dependencies:** pytest, mypy, ruff
-
----
-
-## API Design
-
-### Core Classes
-
-```python
-# Identity generation
-key = RootKey.generate()
-key = RootKey.from_seed(bytes)      # Deterministic
-key = RootKey.from_bytes(bytes)     # Import existing
-
-# DID handling  
-did = key.did                        # Did object
-did = Did.parse("did:key:z6Mk...")   # Parse string
-did.value                            # "did:key:z6Mk..."
-did.public_key                       # bytes (32)
-
-# Session keys
-session = SessionKey.generate(root_key)
-session = SessionKey.generate(root_key, key_id="custom-id")
-
-# Signing
-signature = sign_message(dict, key)           # Returns base64 string
-is_valid = verify_message(dict, sig, pubkey)  # Returns bool
-
-# DID Documents
-doc = DidDocument.new(key)
-doc = doc.with_handshake_endpoint(url)
-doc = doc.with_service(id, type, url)
-signed_doc = doc.sign(key)
-signed_doc.verify()
-```
-
-### Design Decisions
-
-1. **Immutable builders** — `with_*` methods return new objects
-2. **Frozen dataclasses** — DIDs and documents are immutable
-3. **Explicit over implicit** — No magic, clear method names
-4. **Fail loudly** — Raise exceptions on invalid input, not silent failures
+Minimal. No extras.
 
 ---
 
@@ -84,81 +80,152 @@ signed_doc.verify()
 sdk/python/
 ├── pyproject.toml
 ├── README.md
-└── agent_id/
-    ├── __init__.py      # Public API exports
-    ├── keys.py          # RootKey, SessionKey
-    ├── did.py           # Did class
-    ├── signing.py       # sign_message, verify_message, canonicalize
-    └── document.py      # DidDocument
+├── agent_id/
+│   ├── __init__.py
+│   ├── did.py          # Did class
+│   ├── keys.py         # RootKey, SessionKey
+│   ├── signing.py      # sign, verify, canonicalize
+│   ├── document.py     # DidDocument
+│   └── errors.py       # Exception hierarchy
+└── tests/
+    ├── test_did.py
+    ├── test_keys.py
+    ├── test_signing.py
+    └── test_document.py
 ```
+
+---
+
+## API Design
+
+### Keys
+
+```python
+from agent_id import RootKey, SessionKey
+
+# Generate
+key = RootKey.generate()
+print(key.did)  # did:key:z6Mk...
+
+# From seed (deterministic)
+key = RootKey.from_seed(bytes_32)
+
+# Session keys
+session = SessionKey.generate(root_key)
+```
+
+### Signing
+
+```python
+from agent_id import sign, verify
+
+signature = sign(message_dict, key)
+is_valid = verify(message_dict, signature, public_key)
+```
+
+### DID Documents
+
+```python
+from agent_id import DidDocument
+
+doc = (
+    DidDocument.new(key)
+    .with_handshake_endpoint("https://agent.example/aip")
+    .sign(key)
+)
+
+assert doc.verify()
+```
+
+---
+
+## Code Style
+
+**Docstrings:** Google style, only when not obvious.
+
+```python
+def sign(message: dict[str, Any], key: RootKey) -> str:
+    """Sign a message. Returns base64 signature."""
+    ...
+```
+
+**Errors:** Custom hierarchy, clear messages.
+
+```python
+class AIPError(Exception):
+    """Base exception."""
+
+class InvalidDIDError(AIPError):
+    """DID format is invalid."""
+```
+
+**Type hints:** Full coverage, modern syntax.
+
+```python
+def from_public_key(public_key: bytes) -> Did:
+    ...
+```
+
+---
+
+## Testing
+
+Table-driven with dataclasses:
+
+```python
+from dataclasses import dataclass, fields, astuple
+from contextlib import nullcontext
+
+@dataclass
+class SignTestCase:
+    message: dict
+    should_succeed: bool = True
+    exception: type[Exception] | None = None
+
+SIGN_CASES = {
+    "simple": SignTestCase(message={"a": 1}),
+    "empty": SignTestCase(message={}),
+}
+
+@pytest.mark.parametrize(
+    argnames=[f.name for f in fields(SignTestCase)],
+    argvalues=[astuple(tc) for tc in SIGN_CASES.values()],
+    ids=list(SIGN_CASES.keys()),
+)
+def test_sign(message, should_succeed, exception):
+    ...
+```
+
+---
+
+## What's NOT Included
+
+- HTTP client for handshakes (integrators handle transport)
+- Async variants (not needed for signing)
+- Trust layer (separate package)
+- Key storage (leave to integrators)
+- Logging (not needed at this layer)
 
 ---
 
 ## Compatibility
 
-### Rust SDK Mapping
+DIDs and signatures are interoperable with the Rust SDK.
 
 | Rust | Python |
 |------|--------|
 | `RootKey::generate()` | `RootKey.generate()` |
-| `RootKey::from_seed()` | `RootKey.from_seed()` |
-| `key.did()` | `key.did` (property) |
+| `key.did()` | `key.did` |
 | `Did::parse()` | `Did.parse()` |
-| `DidDocument::new()` | `DidDocument.new()` |
-| `.with_handshake_endpoint()` | `.with_handshake_endpoint()` |
 | `.sign()` | `.sign()` |
 | `.verify()` | `.verify()` |
-
-### Interoperability
-
-- DIDs generated in Python are valid in Rust and vice versa
-- Signatures from Python verify in Rust
-- DID Documents are JSON-compatible across implementations
-
----
-
-## Testing Strategy
-
-1. **Unit tests** — Each module tested independently
-2. **Roundtrip tests** — Generate → export → import → verify
-3. **Cross-implementation tests** — (Future) Verify against Rust output
-4. **Property tests** — (Future) Hypothesis for fuzzing
-
----
-
-## Future Considerations
-
-### Handshake Client
-
-A separate module (`agent_id.handshake`) could provide:
-- HTTP client for handshake protocol
-- Async support via `httpx`
-- Session management
-
-### Trust Layer
-
-Separate package (`agent-id-trust`) for:
-- Trust statements
-- Interaction receipts
-- Local trust graph
-
----
-
-## Open Questions
-
-1. **Async support?** — Should signing/verification be async-compatible?
-2. **Key storage?** — Should we provide secure storage helpers or leave to integrators?
-3. **Logging?** — Add structured logging for debugging?
 
 ---
 
 ## Checklist
 
-- [x] Core classes defined
-- [x] Dependencies selected
-- [x] Module structure planned
-- [ ] Review with maintainer
-- [ ] Implementation
+- [ ] Review spec with Austin
+- [ ] Align implementation with spec
 - [ ] Cross-implementation tests
-- [ ] Documentation
-- [ ] PyPI publication
+- [ ] README with examples
+- [ ] PyPI publish setup
