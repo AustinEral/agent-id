@@ -25,7 +25,7 @@ A Python implementation of the Agent Identity Protocol core functionality, enabl
 [project]
 name = "agent-id"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.12"  # Modern Python only
 
 dependencies = [
     "pynacl>=1.5.0",
@@ -234,19 +234,26 @@ class MyClass:
 - **1 word preferred** — `sign`, `verify`, `parse`
 - **2 words okay** — `sign_message`, `from_seed`
 - **3 words max** — only if absolutely necessary
-- **Never too general** — `process()`, `handle()`, `do()` are banned
+- **Context matters** — generic names are fine when the class provides meaning
 - **Self-encapsulating** — the name tells you what it does
 
 ```python
-# ❌ Bad
+# ❌ Bad — generic with no context
 def process(data): ...
 def do_thing(): ...
 def handle_it(x): ...
 
-# ✅ Good
+# ✅ Good — specific
 def sign(payload): ...
 def verify(signature): ...
 def parse(did_string): ...
+
+# ✅ Also good — generic but class provides context
+class TileProcessor:
+    def process(self, tile: Tile) -> Tile: ...
+
+class MessageHandler:
+    def handle(self, message: Message) -> Response: ...
 ```
 
 **Variable names:**
