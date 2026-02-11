@@ -230,6 +230,69 @@ class MyClass:
 - Class names: `PascalCase`
 - Functions/methods: `snake_case`
 
+**Function names:**
+- **1 word preferred** — `sign`, `verify`, `parse`
+- **2 words okay** — `sign_message`, `from_seed`
+- **3 words max** — only if absolutely necessary
+- **Never too general** — `process()`, `handle()`, `do()` are banned
+- **Self-encapsulating** — the name tells you what it does
+
+```python
+# ❌ Bad
+def process(data): ...
+def do_thing(): ...
+def handle_it(x): ...
+
+# ✅ Good
+def sign(payload): ...
+def verify(signature): ...
+def parse(did_string): ...
+```
+
+**Variable names:**
+- **No single letters** — `x`, `i`, `d` are banned (except `_` for unused)
+- **No numbers** — avoid `key1`, `sig2` unless genuinely meaningful
+- **Descriptive** — a reader should understand without context
+
+```python
+# ❌ Bad
+for i in keys:
+    s = sign(i)
+
+# ✅ Good
+for key in keys:
+    signature = sign(key)
+```
+
+### Comments
+
+**No inline comments** unless absolutely necessary.
+
+If you need a comment, the code isn't clear enough. Refactor first:
+
+```python
+# ❌ Bad — comment explains unclear code
+x = data[0:32]  # extract the public key
+
+# ✅ Good — code explains itself
+public_key = data[0:32]
+
+# ✅ Also good — extract to named function
+public_key = extract_public_key(data)
+```
+
+Block comments are okay for **why**, never for **what**:
+
+```python
+# ✅ Okay — explains why
+# Ed25519 public keys are always 32 bytes per RFC 8032
+PUBLIC_KEY_LENGTH = 32
+
+# ❌ Bad — explains what (obvious from code)
+# Set the length to 32
+PUBLIC_KEY_LENGTH = 32
+```
+
 ### Docstrings
 
 Google style, only when not obvious.
