@@ -84,7 +84,7 @@ sdk/python/
 │   ├── __init__.py
 │   ├── did.py          # Did class
 │   ├── keys.py         # RootKey, SessionKey
-│   ├── signing.py      # sign, verify, canonicalize
+│   ├── signing.py      # Signer, verify, canonicalize
 │   ├── document.py     # DidDocument
 │   └── errors.py       # Exception hierarchy
 └── tests/
@@ -93,6 +93,8 @@ sdk/python/
     ├── test_signing.py
     └── test_document.py
 ```
+
+**Module size:** Split when a module does more than one thing, not by line count. Each module should have a single clear responsibility.
 
 ---
 
@@ -169,9 +171,9 @@ def sign(message: Message, key: RootKey) -> SignedMessage:
 ```
 
 Use:
-- **Pydantic models** for data crossing boundaries
+- **Pydantic models** for data crossing trust boundaries (validation needed)
 - **dataclasses** for internal structures
-- **TypedDict** only if you must interface with untyped JSON
+- **TypedDict** for JSON schemas and API response shapes (no validation, just typing)
 - **Generics** when building reusable components
 
 ### No `Any`
@@ -182,18 +184,89 @@ Avoid `Any` unless interfacing with untyped external code. If you need flexibili
 - Union types
 - Protocols for structural typing
 
+### Class Structure
+
+Organize class members in this order:
+
+```python
+class MyClass:
+    # 1. Class variables
+    DEFAULT_TIMEOUT = 30
+
+    # 2. __init__ and other dunders (__str__, __repr__, __eq__, etc.)
+    def __init__(self, value: str) -> None:
+        self._value = value
+
+    def __repr__(self) -> str:
+        return f"MyClass({self._value!r})"
+
+    # 3. Class methods and static methods
+    @classmethod
+    def from_string(cls, s: str) -> "MyClass":
+        return cls(s)
+
+    # 4. Properties
+    @property
+    def value(self) -> str:
+        return self._value
+
+    # 5. Public methods
+    def process(self) -> Result:
+        return self._do_work()
+
+    # 6. Private methods (at the bottom)
+    def _do_work(self) -> Result:
+        ...
+
+    def _validate(self) -> None:
+        ...
+```
+
+### Naming
+
+- `_private` for internal functions/methods
+- `UPPER_SNAKE` for constants
+- No abbreviations except well-known: DID, JCS, JWT, etc.
+- Class names: `PascalCase`
+- Functions/methods: `snake_case`
+
 ### Docstrings
 
 Google style, only when not obvious.
 
-**Errors:** Custom hierarchy, clear messages.
+### Errors
+
+Custom hierarchy with context-rich messages:
 
 ```python
 class AIPError(Exception):
-    """Base exception."""
+    """Base exception for agent-id."""
 
 class InvalidDIDError(AIPError):
     """DID format is invalid."""
+
+class SignatureVerificationError(AIPError):
+    """Signature verification failed."""
+```
+
+Always include context in error messages:
+
+```python
+# ❌ Bad
+raise SignatureVerificationError("invalid signature")
+
+# ✅ Good
+raise SignatureVerificationError(
+    f"Signature verification failed for {did}. "
+    f"Payload hash: {payload_hash[:16]}..."
+)
+```
+
+Always chain exceptions:
+
+```python
+except SomeError as e:
+    raise AIPError("Failed to parse DID document") from e
 ```
 
 **Type hints:** Full coverage, modern syntax.
@@ -207,7 +280,9 @@ def from_public_key(public_key: bytes) -> Did:
 
 ## Testing
 
-Table-driven with dataclasses:
+**Coverage:** All public APIs must have tests. Aim for 90%+ on core modules.
+
+**Table-driven with dataclasses:**
 
 ```python
 from dataclasses import dataclass, fields, astuple
@@ -251,13 +326,55 @@ def test_did_parse(
 
 ---
 
+## Security
+
+Crypto code requires extra care:
+
+- **No `==` on secrets** — Use `secrets.compare_digest()` for timing-safe comparison
+- **Use `secrets` module** — Never `random` for cryptographic values
+- **Never log keys** — No private keys or signatures in log output
+- **Fail closed** — Reject on any verification error, don't try to recover
+
+```python
+# ❌ Bad — timing attack
+if signature == expected:
+    ...
+
+# ✅ Good
+if secrets.compare_digest(signature, expected):
+    ...
+```
+
+## Logging
+
+Optional debug logging, off by default:
+
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+def verify(...) -> bool:
+    logger.debug("Verifying signature for %s", did)
+    ...
+```
+
+Users enable with:
+```python
+logging.getLogger("agent_id").setLevel(logging.DEBUG)
+```
+
+Never log:
+- Private keys
+- Full signatures (truncate if needed for debugging)
+- Secrets or tokens
+
 ## What's NOT Included
 
 - HTTP client for handshakes (integrators handle transport)
 - Async variants (not needed for signing)
 - Trust layer (separate package)
 - Key storage (leave to integrators)
-- Logging (not needed at this layer)
 
 ---
 
